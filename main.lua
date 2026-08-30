@@ -1,6 +1,7 @@
 local CompareRequest = require("compare_request")
 local DataStorage = require("datastorage")
 local DiffParser = require("diff_parser")
+local DiffPreferences = require("diff_preferences")
 local DiffView = require("diff_view")
 local GitHubClient = require("github_client")
 local InfoMessage = require("ui/widget/infomessage")
@@ -19,14 +20,7 @@ local Diffs = WidgetContainer:extend {
 
 function Diffs:init()
     self.settings = LuaSettings:open(self.settings_file)
-    if self.settings:has("show_scrollbar") then
-        self.settings:delSetting("show_scrollbar"):flush()
-    end
-    self.preferences = {
-        wrap_lines = self.settings:isTrue("wrap_lines"),
-        portrait_mode = self.settings:readSetting("portrait_mode") == "split"
-            and "split" or "combined",
-    }
+    self.preferences = DiffPreferences.load(self.settings)
     self.ui.menu:registerToMainMenu(self)
 end
 

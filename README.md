@@ -7,9 +7,8 @@ GitHub repository.
 
 - Compare commit SHAs, branches, or release tags through GitHub's compare API.
 - Parse unified diffs into files, hunks, and numbered lines.
-- Display combined diffs by default in portrait orientation.
-- Always display split diffs in landscape orientation.
-- Switch between combined and split layouts manually while in portrait.
+- Display combined diffs by default.
+- Switch persistently between combined and split layouts in either orientation.
 - Keep wrapping disabled by default and allow it to be toggled.
 - Emphasize paired character changes within modified lines.
 - Preserve unknown Git file headers and report malformed hunk counts as warnings.
@@ -46,8 +45,7 @@ rate limit is reached.
 The viewer title bar has two icon controls:
 
 - **×** closes the viewer.
-- **⚙** opens persistent settings for line wrapping and portrait layout.
-  Landscape is always split.
+- **⚙** opens persistent settings for line wrapping and layout.
 
 Swipe north or south to move by a page. With wrapping disabled, swipe west or
 east to scroll long lines horizontally. Drag the scrollbar to scrub rapidly or
