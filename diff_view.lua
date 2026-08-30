@@ -3,6 +3,7 @@ local Device = require("device")
 local DiffLayout = require("diff_layout")
 local DiffScrollbar = require("diff_scrollbar")
 local DiffSettings = require("diff_settings")
+local DiffViewState = require("diff_view_state")
 local Font = require("ui/font")
 local Geom = require("ui/geometry")
 local InputContainer = require("ui/widget/container/inputcontainer")
@@ -156,6 +157,10 @@ function DiffView:init()
     self.combined_rows = DiffLayout.combined(self.patch)
     self.split_rows = DiffLayout.split(self.patch)
     self.line_number_digits = self:findLineNumberDigits()
+    self.digit_width = 0
+    for digit = 0, 9 do
+        self.digit_width = math.max(self.digit_width, self:measureCode(tostring(digit)))
+    end
     self.mode = Screen:getWidth() > Screen:getHeight()
         and "split" or (self.preferences.portrait_mode or "combined")
     self.dimen = Geom:new {
@@ -211,6 +216,13 @@ end
 
 --- Persist and apply a viewer preference changed in the settings widget.
 function DiffView:applyPreference(key, value)
+    if key == "wrap_lines" or key == "portrait_mode" then
+        self.pending_scroll_progress = DiffViewState.scrollProgress(
+            self.scroll_row,
+            self.current_row_count or 0,
+            self.current_visible_count or 0
+        )
+    end
     self.preferences[key] = value
     if key == "wrap_lines" then
         self.wrap_lines = value
@@ -220,7 +232,6 @@ function DiffView:applyPreference(key, value)
     elseif key == "portrait_mode" and self.dimen.w <= self.dimen.h then
         self.mode = value
     end
-    self.scroll_row = 0
     if self.on_preference_change then
         self.on_preference_change(key, value)
     end
@@ -257,11 +268,16 @@ end
 -- @treturn number gutter width through its separator
 -- @treturn number marker column width
 function DiffView:codeColumnWidths(side)
-    local number_width = self:measureCode(string.rep("0", self.line_number_digits)) + 5
     local number_columns = side and 1 or 2
-    local gutter_width = number_width * number_columns + 5
-    local marker_width = self:measureCode("+") + 8
-    return gutter_width, marker_width
+    local padding = math.max(4, Screen:scaleBySize(4))
+    local metrics = DiffViewState.gutterMetrics(
+        self.digit_width,
+        self.line_number_digits,
+        number_columns,
+        padding
+    )
+    local marker_width = self:measureCode("+") + padding * 2
+    return metrics.gutter_width, marker_width, metrics.number_width, padding
 end
 
 --- Return the full-screen size requested by this view.
@@ -505,13 +521,19 @@ function DiffView:paintCodeCell(bb, x, y, width, line, side)
         bb:paintRect(x, y + self.line_height - 2, width, 2, PALETTE.foreground)
     end
 
-    local gutter_width, marker_width = self:codeColumnWidths(side)
-    local number_width = math.floor((gutter_width - 5) / (side and 1 or 2))
-    local number_x = x + 2
+    local gutter_width, marker_width, number_width, number_padding = self:codeColumnWidths(side)
+    local number_x = x
     local function drawNumber(value)
         local text = value and tostring(value) or ""
         local text_width = self:measureCode(text)
-        self:drawText(bb, number_x + number_width - text_width - 3, y, text, number_width, PALETTE.muted)
+        self:drawText(
+            bb,
+            number_x + number_width - number_padding - text_width,
+            y,
+            text,
+            number_width - number_padding,
+            PALETTE.muted
+        )
         number_x = number_x + number_width
     end
     if side == "left" then
@@ -520,7 +542,7 @@ function DiffView:paintCodeCell(bb, x, y, width, line, side)
         drawNumber(line.new_line)
     else
         drawNumber(line.old_line)
-        bb:paintRect(x + 2 + number_width - 1, y + 3, 1, self.line_height - 6, PALETTE.muted)
+        bb:paintRect(x + number_width - 1, y + 3, 1, self.line_height - 6, PALETTE.muted)
         drawNumber(line.new_line)
     end
     bb:paintRect(x + gutter_width - 1, y, 1, self.line_height, PALETTE.muted)
@@ -681,7 +703,18 @@ function DiffView:paintTo(bb, x, y)
     local rows = self:visualRows(logical_rows, cell_width)
     local visible_count = math.max(1, math.floor((height - self.header_height) / self.line_height))
     local max_scroll = math.max(0, #rows - visible_count)
-    self.scroll_row = math.min(self.scroll_row, max_scroll)
+    if self.pending_scroll_progress ~= nil then
+        self.scroll_row = DiffViewState.rowForProgress(
+            self.pending_scroll_progress,
+            #rows,
+            visible_count
+        )
+        self.pending_scroll_progress = nil
+    else
+        self.scroll_row = math.min(self.scroll_row, max_scroll)
+    end
+    self.current_row_count = #rows
+    self.current_visible_count = visible_count
     self.content_dimen = Geom:new {
         x = x,
         y = y + self.header_height,
