@@ -1,6 +1,13 @@
 local DiffScrollbar = require("diff_scrollbar")
 
 describe("diff scrollbar", function()
+    it("uses a compact dedicated gutter", function()
+        assert.are.equal(24, DiffScrollbar.gutterWidth())
+        assert.are.equal(48, DiffScrollbar.gutterWidth(function(value)
+            return value * 2
+        end))
+    end)
+
     local bounds = { x = 560, y = 100, w = 40, h = 800 }
 
     it("sizes its thumb in proportion to the visible rows", function()

@@ -17,6 +17,7 @@ mkdir -p "dist/$PLUGIN_NAME"
 rsync -a \
     --include="*/" \
     --include="*.lua" \
+    --include="*.svg" \
     --exclude="*" \
     src/ "dist/$PLUGIN_NAME/"
 cp README.md "dist/$PLUGIN_NAME/"
