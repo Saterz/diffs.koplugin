@@ -6,10 +6,10 @@ describe("diff view wrapping", function()
             mode = mode,
             wrap_lines = true,
         }, { __index = DiffView })
-        function view:measureCode(text)
+        function view:measureCode(_, text)
             return #text
         end
-        function view:codeColumnWidths()
+        function view:codeColumnWidths(_)
             return 2, 1
         end
         return view

@@ -341,12 +341,12 @@ end
 --- Return the fixed-width title-bar button target.
 -- The control size deliberately follows the current visual design rather than
 -- the header height, so future header changes do not resize the icons.
-function DiffView:headerControlWidth()
+function DiffView.headerControlWidth()
     return Screen:scaleBySize(HEADER_CONTROL_WIDTH)
 end
 
 --- Return the fixed SVG artwork size used by title-bar controls.
-function DiffView:headerIconSize()
+function DiffView.headerIconSize()
     return Screen:scaleBySize(HEADER_ICON_SIZE)
 end
 
@@ -546,7 +546,7 @@ function DiffView:drawText(bb, x, y, text, width, color, bold)
 end
 
 --- Shorten a title to the available width and show that it was shortened.
-function DiffView:fitText(text, width, bold)
+function DiffView:fitText(text, width)
     if self:measureCode(text) <= width then
         return text
     end
@@ -802,7 +802,7 @@ function DiffView:paintTo(bb, x, y)
         bb,
         x + 8,
         y + 2,
-        self:fitText(self.title or _("Diffs"), title_width, true),
+        self:fitText(self.title or _("Diffs"), title_width),
         title_width,
         PALETTE.foreground,
         true
