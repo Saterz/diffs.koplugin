@@ -89,7 +89,7 @@ describe("diff view gestures", function()
 
     it("places close immediately right of settings in the header", function()
         local view = newView()
-        function view:headerControlWidth(_)
+        function view.headerControlWidth()
             return 40
         end
         function view:onClose()
