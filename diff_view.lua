@@ -16,6 +16,7 @@ local Screen = Device.screen
 local DiffView = InputContainer:extend {
     name = "diff_view",
     covers_fullscreen = true,
+    dithered = true,
     stop_events_propagation = true,
     wrap_lines = false,
     scroll_row = 0,
@@ -28,8 +29,10 @@ local PALETTE = {
     muted = Blitbuffer.COLOR_DARK_GRAY,
     header = Blitbuffer.COLOR_GRAY_D,
     hunk = Blitbuffer.COLOR_GRAY_E,
-    addition = Blitbuffer.COLOR_WHITE,
-    deletion = Blitbuffer.COLOR_GRAY_E,
+    addition = Blitbuffer.COLOR_GRAY_E,
+    addition_strong = Blitbuffer.COLOR_GRAY_D,
+    deletion = Blitbuffer.COLOR_GRAY_D,
+    deletion_strong = Blitbuffer.COLOR_GRAY_C,
 }
 
 --- Return the path that best identifies a parsed file.
@@ -171,7 +174,7 @@ function DiffView:init()
     }
     self._scrollbar_render = function()
         if self.scrollbar_dragging then
-            UIManager:setDirty(self, "ui", self.content_dimen)
+            UIManager:setDirty(self, "ui", self.content_dimen, true)
         end
     end
     if Device:hasKeys() then
@@ -288,13 +291,13 @@ end
 
 --- Force the complete first frame to replace the dialog beneath it.
 function DiffView:onShow()
-    UIManager:setDirty(self, "full", self.dimen)
+    UIManager:setDirty(self, "full", self.dimen, true)
     return true
 end
 
 --- Schedule an e-ink UI refresh after navigation or a mode change.
 function DiffView:refresh()
-    UIManager:setDirty(self, "ui", self.dimen)
+    UIManager:setDirty(self, "ui", self.dimen, true)
 end
 
 --- Close the viewer.
@@ -487,8 +490,9 @@ function DiffView:paintIntraline(bb, content_x, y, cell_right, line)
     local clipped_x = math.max(content_x, start_x)
     local clipped_right = math.min(cell_right, start_x + changed_width)
     if clipped_right > clipped_x then
-        local rule_y = line.kind == "addition" and y + self.line_height - 3 or y + 1
-        bb:paintRect(clipped_x, rule_y, clipped_right - clipped_x, 2, PALETTE.foreground)
+        local shade = line.kind == "addition"
+            and PALETTE.addition_strong or PALETTE.deletion_strong
+        bb:paintRect(clipped_x, y + 1, clipped_right - clipped_x, self.line_height - 2, shade)
     end
 end
 
@@ -515,11 +519,6 @@ function DiffView:paintCodeCell(bb, x, y, width, line, side)
         marker = "−"
     end
     bb:paintRect(x, y, width, self.line_height, background)
-    if line.kind == "addition" then
-        bb:paintRect(x, y, width, 1, PALETTE.muted)
-    elseif line.kind == "deletion" then
-        bb:paintRect(x, y + self.line_height - 2, width, 2, PALETTE.foreground)
-    end
 
     local gutter_width, marker_width, number_width, number_padding = self:codeColumnWidths(side)
     local number_x = x

@@ -16,9 +16,9 @@ GitHub repository.
 - Remember the last comparison fields and viewer settings across restarts.
 - Scrub quickly through long diffs with a touch-friendly e-ink scrollbar.
 - Identify additions and removals without relying on color:
-  - additions use a white background, a `+` marker, and a top rule;
-  - removals use a very light gray background, a `−` marker, and a bottom rule;
-  - intraline changes use short rules that never obscure their text.
+  - additions use a light gray background and a `+` marker;
+  - removals use a distinct, slightly stronger light gray and a `−` marker;
+  - exact character changes use a stronger background while retaining black text.
 
 ## Installation
 
