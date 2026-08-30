@@ -147,15 +147,18 @@ local function visualLine(line, content, continuation)
     if not line then
         return nil
     end
-    return {
+    local visual = {
         kind = line.kind,
         content = content,
         continuation = continuation,
-        old_line = continuation and nil or line.old_line,
-        new_line = continuation and nil or line.new_line,
         no_newline = line.no_newline,
-        intraline = continuation and nil or line.intraline,
     }
+    if not continuation then
+        visual.old_line = line.old_line
+        visual.new_line = line.new_line
+        visual.intraline = line.intraline
+    end
+    return visual
 end
 
 function DiffView:init()

@@ -10,6 +10,7 @@ GitHub repository.
 - Display combined diffs by default.
 - Switch persistently between combined and split layouts in either orientation.
 - Keep wrapping disabled by default and allow it to be toggled.
+- Leave line-number gutters blank on wrapped continuation rows.
 - Emphasize paired character changes within modified lines.
 - Preserve unknown Git file headers and report malformed hunk counts as warnings.
 - Remember the last comparison fields and viewer settings across restarts.
