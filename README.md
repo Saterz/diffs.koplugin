@@ -19,7 +19,8 @@ GitHub repository.
 - Identify additions and removals without relying on color:
   - additions use a light gray background and a `+` marker;
   - removals use a distinct, slightly stronger light gray and a `−` marker;
-  - exact character changes use a stronger background while retaining black text.
+  - exact character changes use the same dark gray background on both row types
+    while retaining black text.
 
 ## Installation
 
