@@ -1,29 +1,24 @@
 local CompareRequest = require("compare_request")
 
 describe("CompareRequest", function()
-    it("parses a GitHub repository URL", function()
-        local repository = assert(CompareRequest.parseRepositoryUrl(
-            "https://github.com/Saterz/diffs.koplugin.git/"
-        ))
-
-        assert.are.equal("Saterz", repository.owner)
-        assert.are.equal("diffs.koplugin", repository.repo)
-    end)
-
     it("normalizes comparison fields", function()
         local request = assert(CompareRequest.fromFields(
-            "https://github.com/Saterz/diffs.koplugin",
+            " Saterz ",
+            " diffs.koplugin.git ",
             " v0.1.0 ",
             " main "
         ))
 
+        assert.are.equal("Saterz", request.owner)
+        assert.are.equal("diffs.koplugin", request.repo)
         assert.are.equal("v0.1.0", request.base_ref)
         assert.are.equal("main", request.head_ref)
     end)
 
-    it("rejects non-GitHub URLs", function()
+    it("rejects slashes in owner and repository fields", function()
         local request, validation_error = CompareRequest.fromFields(
-            "https://example.com/owner/repository",
+            "owner/repository",
+            "repository",
             "base",
             "head"
         )
@@ -31,5 +26,11 @@ describe("CompareRequest", function()
         assert.is_nil(request)
         assert.is_truthy(validation_error)
     end)
-end)
 
+    it("requires both repository fields", function()
+        local request, validation_error = CompareRequest.fromFields("owner", "", "base", "head")
+
+        assert.is_nil(request)
+        assert.is_truthy(validation_error)
+    end)
+end)

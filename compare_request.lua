@@ -7,42 +7,24 @@ local function trim(value)
     return (value:gsub("^%s+", ""):gsub("%s+$", ""))
 end
 
---- Parse a normal GitHub repository URL.
--- @tparam string repository_url URL such as https://github.com/owner/repository
--- @treturn table|nil table with `owner` and `repo` string fields
--- @treturn string|nil validation error
-function CompareRequest.parseRepositoryUrl(repository_url)
-    if type(repository_url) ~= "string" then
-        return nil, "Repository URL must be a string."
-    end
-
-    local normalized_url = trim(repository_url):gsub("/+$", "")
-    local owner, repo = normalized_url:match("^https?://github%.com/([^/]+)/([^/]+)$")
-    if not owner or not repo then
-        return nil, "Use a GitHub repository URL such as https://github.com/owner/repository."
-    end
-
-    repo = repo:gsub("%.git$", "")
-    if owner == "" or repo == "" then
-        return nil, "The repository owner and name cannot be empty."
-    end
-
-    return {
-        owner = owner,
-        repo = repo,
-    }
-end
-
 --- Validate and normalize the user's comparison fields.
--- @tparam string repository_url GitHub repository URL
+-- @tparam string owner GitHub account or organization name
+-- @tparam string repo repository name
 -- @tparam string base_ref base commit SHA, branch, or tag
 -- @tparam string head_ref head commit SHA, branch, or tag
 -- @treturn table|nil normalized request with `owner`, `repo`, `base_ref`, and `head_ref`
 -- @treturn string|nil validation error
-function CompareRequest.fromFields(repository_url, base_ref, head_ref)
-    local repository, repository_error = CompareRequest.parseRepositoryUrl(repository_url)
-    if not repository then
-        return nil, repository_error
+function CompareRequest.fromFields(owner, repo, base_ref, head_ref)
+    owner = type(owner) == "string" and trim(owner) or ""
+    repo = type(repo) == "string" and trim(repo):gsub("%.git$", "") or ""
+    if owner == "" or repo == "" then
+        return nil, "The repository owner and name are required."
+    end
+    if not owner:match("^[%w][%w-]*$") then
+        return nil, "The repository owner contains unsupported characters."
+    end
+    if not repo:match("^[%w_.-]+$") or repo == "." or repo == ".." then
+        return nil, "The repository name contains unsupported characters."
     end
 
     base_ref = type(base_ref) == "string" and trim(base_ref) or ""
@@ -54,9 +36,12 @@ function CompareRequest.fromFields(repository_url, base_ref, head_ref)
         return nil, "References cannot contain the comparison separator (...)."
     end
 
-    repository.base_ref = base_ref
-    repository.head_ref = head_ref
-    return repository
+    return {
+        owner = owner,
+        repo = repo,
+        base_ref = base_ref,
+        head_ref = head_ref,
+    }
 end
 
 return CompareRequest

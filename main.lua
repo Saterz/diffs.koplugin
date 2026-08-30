@@ -84,17 +84,11 @@ function Diffs:loadComparison(request)
             return
         end
 
-        local title = string.format(
-            "%s/%s  %s…%s",
-            request.owner,
-            request.repo,
-            request.base_ref,
-            request.head_ref
-        )
         UIManager:show(DiffView:new {
             patch = patch,
             metadata = metadata,
-            title = title,
+            title = string.format("%s/%s", request.owner, request.repo),
+            comparison_title = string.format("%s → %s", request.base_ref, request.head_ref),
             preferences = self.preferences,
             on_preference_change = function(key, value)
                 self:savePreference(key, value)
@@ -110,18 +104,23 @@ function Diffs:openCompareDialog()
         title = _("Compare GitHub revisions"),
         fields = {
             {
-                description = _("Repository URL"),
-                text = "https://github.com/",
-                hint = "https://github.com/owner/repository",
+                description = _("Repository owner"),
+                text = self.settings:readSetting("last_owner") or "",
+                hint = _("Account or organization"),
+            },
+            {
+                description = _("Repository name"),
+                text = self.settings:readSetting("last_repo") or "",
+                hint = _("Name only, without a URL"),
             },
             {
                 description = _("Base revision"),
-                text = "",
+                text = self.settings:readSetting("last_base_ref") or "",
                 hint = _("Commit, branch, or tag"),
             },
             {
                 description = _("Head revision"),
-                text = "",
+                text = self.settings:readSetting("last_head_ref") or "",
                 hint = _("Commit, branch, or tag"),
             },
         },
@@ -140,12 +139,18 @@ function Diffs:openCompareDialog()
                     callback = function()
                         local fields = dialog:getFields()
                         local request, validation_error = CompareRequest.fromFields(
-                            fields[1], fields[2], fields[3]
+                            fields[1], fields[2], fields[3], fields[4]
                         )
                         if not request then
                             UIManager:show(InfoMessage:new { text = validation_error })
                             return
                         end
+                        self.settings
+                            :saveSetting("last_owner", request.owner)
+                            :saveSetting("last_repo", request.repo)
+                            :saveSetting("last_base_ref", request.base_ref)
+                            :saveSetting("last_head_ref", request.head_ref)
+                            :flush()
                         UIManager:close(dialog)
                         self:loadComparison(request)
                     end,

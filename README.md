@@ -13,6 +13,8 @@ GitHub repository.
 - Keep wrapping disabled by default and allow it to be toggled.
 - Emphasize paired character changes within modified lines.
 - Preserve unknown Git file headers and report malformed hunk counts as warnings.
+- Remember the last comparison fields and viewer settings across restarts.
+- Scrub quickly through long diffs with a touch-friendly e-ink scrollbar.
 - Identify additions and removals without relying on color:
   - additions use a light gray background, a `+` marker, and a top rule;
   - removals use a darker gray background, a `−` marker, and a bottom rule;
@@ -29,9 +31,10 @@ koreader/plugins/diffs.koplugin/
 
 Restart KOReader, open **Tools → Diffs**, and enter:
 
-1. A repository URL such as `https://github.com/koreader/koreader`.
-2. A base commit, branch, or tag.
-3. A head commit, branch, or tag.
+1. A repository owner such as `koreader`.
+2. A repository name such as `koreader`.
+3. A base commit, branch, or tag.
+4. A head commit, branch, or tag.
 
 The MVP uses GitHub's unauthenticated API and therefore supports public
 repositories only. GitHub may temporarily reject requests after its anonymous
@@ -39,20 +42,20 @@ rate limit is reached.
 
 ## Viewer controls
 
-The viewer title bar is divided into three touch targets:
+The viewer title bar has two icon controls:
 
-- **Close** closes the viewer.
-- **Combined/Split** changes the layout in portrait orientation. Landscape is
-  always split.
-- **Wrap: on/off** toggles line wrapping.
+- **×** closes the viewer.
+- **⚙** opens persistent settings for line wrapping, portrait layout, and the
+  fast scrollbar. Landscape is always split.
 
 Swipe north or south to move by a page. With wrapping disabled, swipe west or
-east to scroll long lines horizontally.
+east to scroll long lines horizontally. Drag the scrollbar to scrub rapidly or
+tap its rail to jump without dragging.
 
 ## Tests
 
-The pure-Lua comparison model, diff parser, line pairing, and intraline logic
-have Busted specifications in `spec/`.
+The pure-Lua comparison model, diff parser, line pairing, intraline logic, and
+scrollbar calculations have Busted specifications in `spec/`.
 
 When this plugin is checked out inside a KOReader development tree, run the
 plugin specifications with KOReader's Busted environment and include the
