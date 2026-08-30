@@ -597,15 +597,16 @@ end
 --- Expand code rows into wrapped visual rows when wrapping is enabled.
 -- @tparam table rows logical combined or split rows
 -- @tparam number cell_width available code-cell width
+-- @tparam number code_width complete width excluding the scrollbar gutter
 -- @treturn table visual row array
-function DiffView:visualRows(rows, cell_width)
+function DiffView:visualRows(rows, cell_width, code_width)
     local gutter_width, marker_width = self:codeColumnWidths(self.mode == "split" and "left" or nil)
     local character_width = math.max(1, self:measureCode("M"))
     local max_characters = math.max(
         1,
         math.floor((cell_width - gutter_width - marker_width - 4) / character_width)
     )
-    local metadata_characters = math.max(1, math.floor((self.dimen.w - 10) / character_width))
+    local metadata_characters = math.max(1, math.floor((code_width - 10) / character_width))
     local visual_rows = {}
     for _, row in ipairs(rows) do
         if row.kind == "file" then
@@ -734,8 +735,15 @@ function DiffView:paintTo(bb, x, y)
     bb:paintRect(x, y + self.header_height - 2, width, 2, PALETTE.foreground)
 
     local logical_rows = self.mode == "split" and self.split_rows or self.combined_rows
-    local cell_width = self.mode == "split" and math.floor(width / 2) or width
-    local rows = self:visualRows(logical_rows, cell_width)
+    local viewport = DiffViewState.viewportMetrics(
+        width,
+        DiffScrollbar.gutterWidth(function(value)
+            return Screen:scaleBySize(value)
+        end),
+        self.mode == "split"
+    )
+    local cell_width = self.mode == "split" and viewport.left_width or viewport.code_width
+    local rows = self:visualRows(logical_rows, cell_width, viewport.code_width)
     local visible_count = math.max(1, math.floor((height - self.header_height) / self.line_height))
     local max_scroll = math.max(0, #rows - visible_count)
     if self.pending_scroll_progress ~= nil then
@@ -756,25 +764,58 @@ function DiffView:paintTo(bb, x, y)
         w = width,
         h = height - self.header_height,
     }
+    self.code_dimen = Geom:new {
+        x = x,
+        y = self.content_dimen.y,
+        w = viewport.code_width,
+        h = self.content_dimen.h,
+    }
+    self.scrollbar_dimen = Geom:new {
+        x = x + viewport.scrollbar_offset,
+        y = self.content_dimen.y,
+        w = viewport.scrollbar_width,
+        h = self.content_dimen.h,
+    }
 
     local row_y = y + self.header_height
     for index = self.scroll_row + 1, math.min(#rows, self.scroll_row + visible_count) do
         local row = rows[index]
         if row.kind ~= "code" then
-            self:paintMetadataRow(bb, x, row_y, width, row)
+            self:paintMetadataRow(bb, x, row_y, viewport.code_width, row)
         elseif self.mode == "combined" then
-            self:paintCodeCell(bb, x, row_y, width, row.line)
+            self:paintCodeCell(bb, x, row_y, viewport.code_width, row.line)
         else
-            local left_width = math.floor(width / 2)
-            self:paintCodeCell(bb, x, row_y, left_width, row.left, "left")
-            bb:paintRect(x + left_width - 1, row_y, 2, self.line_height, PALETTE.foreground)
-            self:paintCodeCell(bb, x + left_width + 1, row_y, width - left_width - 1, row.right, "right")
+            self:paintCodeCell(bb, x, row_y, viewport.left_width, row.left, "left")
+            bb:paintRect(x + viewport.left_width - 1, row_y, 2, self.line_height, PALETTE.foreground)
+            self:paintCodeCell(
+                bb,
+                x + viewport.right_offset,
+                row_y,
+                viewport.right_width,
+                row.right,
+                "right"
+            )
         end
         row_y = row_y + self.line_height
     end
 
+    bb:paintRect(
+        self.scrollbar_dimen.x,
+        self.scrollbar_dimen.y,
+        self.scrollbar_dimen.w,
+        self.scrollbar_dimen.h,
+        PALETTE.background
+    )
+    bb:paintRect(
+        self.scrollbar_dimen.x,
+        self.scrollbar_dimen.y,
+        1,
+        self.scrollbar_dimen.h,
+        PALETTE.muted
+    )
+
     self.scrollbar = self.preferences.show_scrollbar ~= false and DiffScrollbar.calculate(
-        self.content_dimen,
+        self.scrollbar_dimen,
         #rows,
         visible_count,
         self.scroll_row,
