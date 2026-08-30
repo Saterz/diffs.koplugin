@@ -1,18 +1,16 @@
 local RenderImage = require("ui/renderimage")
-local lfs = require("libs/libkoreader-lfs")
 
 local DiffIcon = {}
 
---- Paint an SVG only when its file is present and the renderer accepts it.
--- Returning false leaves the caller free to keep the control blank without
--- KOReader's checkerboard missing-image placeholder.
+--- Paint an SVG, showing KOReader's checkerboard when it cannot be loaded.
+-- The placeholder makes a missing asset or renderer failure visible without
+-- reverting to the previous text-glyph controls.
 function DiffIcon.paint(bb, filename, x, y, width, height)
-    if lfs.attributes(filename, "mode") ~= "file" then
-        return false
-    end
-
     local image, is_straight_alpha = RenderImage:renderSVGImageFile(filename, width, height)
     if not image then
+        local placeholder = RenderImage:renderCheckerboard(width, height, bb:getType())
+        bb:blitFrom(placeholder, x, y)
+        placeholder:free()
         return false
     end
     if is_straight_alpha then
