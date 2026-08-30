@@ -138,12 +138,34 @@ local function takeCharacters(text, count)
     return text:sub(1, position - 1)
 end
 
+--- Count UTF-8 characters in a string.
+-- @tparam string text UTF-8 text
+-- @treturn number character count
+local function characterCount(text)
+    local count = 0
+    local position = 1
+    while position <= #text do
+        local first_byte = text:byte(position)
+        local width = 1
+        if first_byte >= 0xF0 and first_byte <= 0xF7 then
+            width = 4
+        elseif first_byte >= 0xE0 and first_byte <= 0xEF then
+            width = 3
+        elseif first_byte >= 0xC0 and first_byte <= 0xDF then
+            width = 2
+        end
+        position = position + width
+        count = count + 1
+    end
+    return count
+end
+
 --- Copy a line for a wrapped continuation without mutating the parsed patch.
 -- @tparam table line source parsed line
 -- @tparam string content wrapped content
 -- @tparam boolean continuation whether this is not the first visual fragment
 -- @treturn table visual line
-local function visualLine(line, content, continuation)
+local function visualLine(line, content, continuation, content_start)
     if not line then
         return nil
     end
@@ -151,13 +173,14 @@ local function visualLine(line, content, continuation)
         kind = line.kind,
         content = content,
         continuation = continuation,
+        content_start = content_start or 0,
         no_newline = line.no_newline,
     }
     if not continuation then
         visual.old_line = line.old_line
         visual.new_line = line.new_line
-        visual.intraline = line.intraline
     end
+    visual.intraline = line.intraline
     return visual
 end
 
@@ -519,12 +542,29 @@ end
 -- @tparam number cell_right clipping boundary
 -- @tparam table line parsed line containing intraline segments
 function DiffView:paintIntraline(bb, content_x, y, cell_right, line)
-    if not line.intraline or line.intraline.changed == "" or self.wrap_lines then
+    if not line.intraline or line.intraline.changed == "" then
         return
     end
+
+    local fragment_start = line.content_start or 0
+    local fragment_end = fragment_start + characterCount(line.content)
+    local changed_start = characterCount(line.intraline.prefix)
+    local changed_end = changed_start + characterCount(line.intraline.changed)
+    local overlap_start = math.max(fragment_start, changed_start)
+    local overlap_end = math.min(fragment_end, changed_end)
+    if overlap_end <= overlap_start then
+        return
+    end
+
+    local local_start = overlap_start - fragment_start
+    local local_end = overlap_end - fragment_start
     local hidden_width = self:measureCode(takeCharacters(line.content, self.scroll_column))
-    local start_x = content_x + self:measureCode(line.intraline.prefix) - hidden_width
-    local changed_width = math.max(2, self:measureCode(line.intraline.changed))
+    local start_x = content_x + self:measureCode(takeCharacters(line.content, local_start)) - hidden_width
+    local changed_width = math.max(
+        2,
+        self:measureCode(takeCharacters(line.content, local_end))
+            - self:measureCode(takeCharacters(line.content, local_start))
+    )
     local clipped_x = math.max(content_x, start_x)
     local clipped_right = math.min(cell_right, start_x + changed_width)
     if clipped_right > clipped_x then
@@ -649,7 +689,12 @@ function DiffView:visualRows(rows, cell_width, code_width)
             for index, chunk in ipairs(chunks) do
                 table.insert(visual_rows, {
                     kind = "code",
-                    line = visualLine(row.line, chunk, index > 1),
+                    line = visualLine(
+                        row.line,
+                        chunk,
+                        index > 1,
+                        (index - 1) * max_characters
+                    ),
                 })
             end
         else
@@ -659,8 +704,12 @@ function DiffView:visualRows(rows, cell_width, code_width)
             for index = 1, count do
                 table.insert(visual_rows, {
                     kind = "code",
-                    left = left_chunks[index] and visualLine(row.left, left_chunks[index], index > 1) or nil,
-                    right = right_chunks[index] and visualLine(row.right, right_chunks[index], index > 1) or nil,
+                    left = left_chunks[index]
+                        and visualLine(row.left, left_chunks[index], index > 1, (index - 1) * max_characters)
+                        or nil,
+                    right = right_chunks[index]
+                        and visualLine(row.right, right_chunks[index], index > 1, (index - 1) * max_characters)
+                        or nil,
                 })
             end
         end
