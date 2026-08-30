@@ -13,6 +13,15 @@ local _ = require("gettext")
 
 local Screen = Device.screen
 
+--- Resolve a KOReader palette constant and fail before painting if it is invalid.
+-- `paintRect` treats nil as black, so silently accepting a misspelled constant
+-- would make text unreadable on the device.
+local function requiredColor(name)
+    local color = Blitbuffer[name]
+    assert(color, "Unknown KOReader Blitbuffer color: " .. name)
+    return color
+end
+
 local DiffView = InputContainer:extend {
     name = "diff_view",
     covers_fullscreen = true,
@@ -24,15 +33,15 @@ local DiffView = InputContainer:extend {
 }
 
 local PALETTE = {
-    background = Blitbuffer.COLOR_WHITE,
-    foreground = Blitbuffer.COLOR_BLACK,
-    muted = Blitbuffer.COLOR_DARK_GRAY,
-    header = Blitbuffer.COLOR_GRAY_D,
-    hunk = Blitbuffer.COLOR_GRAY_E,
-    addition = Blitbuffer.COLOR_GRAY_E,
-    addition_strong = Blitbuffer.COLOR_GRAY_D,
-    deletion = Blitbuffer.COLOR_GRAY_D,
-    deletion_strong = Blitbuffer.COLOR_GRAY_C,
+    background = requiredColor("COLOR_WHITE"),
+    foreground = requiredColor("COLOR_BLACK"),
+    muted = requiredColor("COLOR_DARK_GRAY"),
+    header = requiredColor("COLOR_GRAY_D"),
+    hunk = requiredColor("COLOR_GRAY_E"),
+    addition = requiredColor("COLOR_GRAY_E"),
+    addition_strong = requiredColor("COLOR_LIGHT_GRAY"),
+    deletion = requiredColor("COLOR_GRAY_D"),
+    deletion_strong = requiredColor("COLOR_GRAY_B"),
 }
 
 --- Return the path that best identifies a parsed file.
