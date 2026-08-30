@@ -50,7 +50,7 @@ function CompareRequest.fromFields(repository_url, base_ref, head_ref)
     if base_ref == "" or head_ref == "" then
         return nil, "Both the base and head references are required."
     end
-    if base_ref:find("%.%.%.", 1, false) or head_ref:find("%.%.%.", 1, false) then
+    if base_ref:find("...", 1, true) or head_ref:find("...", 1, true) then
         return nil, "References cannot contain the comparison separator (...)."
     end
 
@@ -60,4 +60,3 @@ function CompareRequest.fromFields(repository_url, base_ref, head_ref)
 end
 
 return CompareRequest
-
