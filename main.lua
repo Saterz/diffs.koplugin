@@ -1,8 +1,10 @@
 local CompareRequest = require("compare_request")
+local DataStorage = require("datastorage")
 local DiffParser = require("diff_parser")
 local DiffView = require("diff_view")
 local GitHubClient = require("github_client")
 local InfoMessage = require("ui/widget/infomessage")
+local LuaSettings = require("luasettings")
 local MultiInputDialog = require("ui/widget/multiinputdialog")
 local NetworkMgr = require("ui/network/manager")
 local UIManager = require("ui/uimanager")
@@ -12,10 +14,24 @@ local _ = require("gettext")
 local Diffs = WidgetContainer:extend {
     name = "diffs",
     is_doc_only = false,
+    settings_file = DataStorage:getSettingsDir() .. "/diffs.lua",
 }
 
 function Diffs:init()
+    self.settings = LuaSettings:open(self.settings_file)
+    self.preferences = {
+        wrap_lines = self.settings:isTrue("wrap_lines"),
+        portrait_mode = self.settings:readSetting("portrait_mode") == "split"
+            and "split" or "combined",
+        show_scrollbar = self.settings:nilOrTrue("show_scrollbar"),
+    }
     self.ui.menu:registerToMainMenu(self)
+end
+
+--- Store a viewer preference immediately so it survives a KOReader restart.
+function Diffs:savePreference(key, value)
+    self.preferences[key] = value
+    self.settings:saveSetting(key, value):flush()
 end
 
 --- Download, parse, and display a validated comparison.
@@ -79,6 +95,10 @@ function Diffs:loadComparison(request)
             patch = patch,
             metadata = metadata,
             title = title,
+            preferences = self.preferences,
+            on_preference_change = function(key, value)
+                self:savePreference(key, value)
+            end,
         })
     end)
 end

@@ -2,6 +2,7 @@ local Blitbuffer = require("ffi/blitbuffer")
 local Device = require("device")
 local DiffLayout = require("diff_layout")
 local DiffScrollbar = require("diff_scrollbar")
+local DiffSettings = require("diff_settings")
 local Font = require("ui/font")
 local Geom = require("ui/geometry")
 local InputContainer = require("ui/widget/container/inputcontainer")
@@ -123,6 +124,8 @@ local function visualLine(line, content, continuation)
 end
 
 function DiffView:init()
+    self.preferences = self.preferences or {}
+    self.wrap_lines = self.preferences.wrap_lines == true
     self.code_face = Font:getFace("infont", 15)
     local face_height, face_ascender = self.code_face.ftsize:getHeightAndAscender()
     self.line_height = math.ceil(face_height) + 6
@@ -131,7 +134,8 @@ function DiffView:init()
     self.combined_rows = DiffLayout.combined(self.patch)
     self.split_rows = DiffLayout.split(self.patch)
     self.line_number_digits = self:findLineNumberDigits()
-    self.mode = Screen:getWidth() > Screen:getHeight() and "split" or "combined"
+    self.mode = Screen:getWidth() > Screen:getHeight()
+        and "split" or (self.preferences.portrait_mode or "combined")
     self.dimen = Geom:new {
         x = 0,
         y = 0,
@@ -181,6 +185,34 @@ function DiffView:init()
             end,
         },
     }
+end
+
+--- Persist and apply a viewer preference changed in the settings widget.
+function DiffView:applyPreference(key, value)
+    self.preferences[key] = value
+    if key == "wrap_lines" then
+        self.wrap_lines = value
+        if value then
+            self.scroll_column = 0
+        end
+    elseif key == "portrait_mode" and self.dimen.w <= self.dimen.h then
+        self.mode = value
+    end
+    self.scroll_row = 0
+    if self.on_preference_change then
+        self.on_preference_change(key, value)
+    end
+    self:refresh()
+end
+
+--- Open the dedicated viewer settings screen.
+function DiffView:openSettings()
+    UIManager:show(DiffSettings:new {
+        preferences = self.preferences,
+        on_change = function(key, value)
+            self:applyPreference(key, value)
+        end,
+    })
 end
 
 --- Find the number of digits needed by the largest source line number.
@@ -242,23 +274,11 @@ function DiffView:handleTap(gesture)
         return true
     end
 
-    local third = self.dimen.w / 3
-    if gesture.pos.x < third then
+    local icon_width = self.line_height * 2
+    if gesture.pos.x < icon_width then
         return self:onClose()
-    elseif gesture.pos.x < third * 2 then
-        if self.dimen.w <= self.dimen.h then
-            self.mode = self.mode == "combined" and "split" or "combined"
-            self.scroll_row = 0
-            self.scroll_column = 0
-            self:refresh()
-        end
-    else
-        self.wrap_lines = not self.wrap_lines
-        if self.wrap_lines then
-            self.scroll_column = 0
-        end
-        self.scroll_row = 0
-        self:refresh()
+    elseif gesture.pos.x >= self.dimen.w - icon_width then
+        self:openSettings()
     end
     return true
 end
@@ -389,6 +409,22 @@ function DiffView:drawText(bb, x, y, text, width, color, bold)
         color or PALETTE.foreground,
         width
     )
+end
+
+--- Shorten a title to the available width and show that it was shortened.
+function DiffView:fitText(text, width, bold)
+    if self:measureCode(text) <= width then
+        return text
+    end
+    local characters = wrapText(text, 1)
+    while #characters > 1 do
+        table.remove(characters)
+        local candidate = table.concat(characters) .. "…"
+        if self:measureCode(candidate) <= width then
+            return candidate
+        end
+    end
+    return "…"
 end
 
 --- Paint the emphasized character range for a changed line.
@@ -576,19 +612,39 @@ function DiffView:paintTo(bb, x, y)
     self.dimen.x, self.dimen.y, self.dimen.w, self.dimen.h = x, y, width, height
     self:updateTouchZonesOnScreenResize(self.dimen)
 
-    if width > height then
-        self.mode = "split"
-    end
+    self.mode = width > height and "split" or (self.preferences.portrait_mode or "combined")
 
     bb:paintRect(x, y, width, height, PALETTE.background)
     bb:paintRect(x, y, width, self.header_height, PALETTE.header)
-    local title = self.title or _("Diffs")
-    self:drawText(bb, x + 5, y + 2, title, width - 10, PALETTE.foreground, true)
-    local mode_label = self.mode == "split" and _("Split") or _("Combined")
-    local wrap_label = self.wrap_lines and _("Wrap: on") or _("Wrap: off")
-    self:drawText(bb, x + 5, y + self.line_height, _("Close"), width / 3 - 10, PALETTE.foreground)
-    self:drawText(bb, x + width / 3 + 5, y + self.line_height, mode_label, width / 3 - 10, PALETTE.foreground)
-    self:drawText(bb, x + width * 2 / 3 + 5, y + self.line_height, wrap_label, width / 3 - 10, PALETTE.foreground)
+    local icon_width = self.line_height * 2
+    local title_width = width - icon_width * 2
+    self:drawText(bb, x + 8, y + 2, "×", icon_width - 8, PALETTE.foreground, true)
+    self:drawText(
+        bb,
+        x + icon_width,
+        y + 2,
+        self:fitText(self.title or _("Diffs"), title_width, true),
+        title_width,
+        PALETTE.foreground,
+        true
+    )
+    self:drawText(
+        bb,
+        x + width - icon_width + 6,
+        y + 2,
+        "⚙",
+        icon_width - 8,
+        PALETTE.foreground,
+        true
+    )
+    self:drawText(
+        bb,
+        x + 8,
+        y + self.line_height,
+        self:fitText(self.comparison_title or "", width - 16),
+        width - 16,
+        PALETTE.foreground
+    )
     bb:paintRect(x, y + self.header_height - 2, width, 2, PALETTE.foreground)
 
     local logical_rows = self.mode == "split" and self.split_rows or self.combined_rows
@@ -620,7 +676,7 @@ function DiffView:paintTo(bb, x, y)
         row_y = row_y + self.line_height
     end
 
-    self.scrollbar = DiffScrollbar.calculate(
+    self.scrollbar = self.preferences.show_scrollbar ~= false and DiffScrollbar.calculate(
         self.content_dimen,
         #rows,
         visible_count,
