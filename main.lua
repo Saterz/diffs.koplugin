@@ -107,7 +107,7 @@ function Diffs:openCompareDialog()
             {
                 description = _("Repository name"),
                 text = self.settings:readSetting("last_repo") or "",
-                hint = _("Name only, without a URL"),
+                hint = _("Name only"),
             },
             {
                 description = _("Base revision"),
