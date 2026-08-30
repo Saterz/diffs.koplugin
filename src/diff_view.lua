@@ -393,7 +393,7 @@ function DiffView:onCloseWidget()
 end
 
 --- Handle taps in the custom title bar.
--- Close and settings are grouped at the right edge, in that order.
+-- Settings and close are grouped at the right edge, in that order.
 -- @tparam table gesture KOReader tap gesture with a `pos` point
 -- @treturn boolean true when handled
 function DiffView:handleTap(gesture)
@@ -409,9 +409,9 @@ function DiffView:handleTap(gesture)
     local control_width = self:headerControlWidth()
     local controls_x = self.dimen.w - control_width * 2
     if gesture.pos.x >= controls_x and gesture.pos.x < controls_x + control_width then
-        return self:onClose()
-    elseif gesture.pos.x >= controls_x + control_width then
         self:openSettings()
+    elseif gesture.pos.x >= controls_x + control_width then
+        return self:onClose()
     end
     return true
 end
@@ -828,15 +828,23 @@ function DiffView:paintTo(bb, x, y)
         PALETTE.foreground,
         true
     )
-    self:paintHeaderIcon(bb, "x.svg", controls_x, y, control_width, self.header_height, "×")
     self:paintHeaderIcon(
         bb,
         "settings.svg",
-        controls_x + control_width,
+        controls_x,
         y,
         control_width,
         self.header_height,
         "⚙"
+    )
+    self:paintHeaderIcon(
+        bb,
+        "x.svg",
+        controls_x + control_width,
+        y,
+        control_width,
+        self.header_height,
+        "×"
     )
     self:drawText(
         bb,
