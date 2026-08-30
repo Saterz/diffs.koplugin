@@ -1,0 +1,6 @@
+# Generated release artifacts
+*.zip
+dist/
+
+# Lua bytecode
+luac.out
