@@ -24,8 +24,8 @@ GitHub repository.
 
 ## Installation
 
-Copy this repository to KOReader's plugin directory and keep the `.koplugin`
-suffix:
+Download the latest archive from the [GitHub Releases page](https://github.com/Saterz/diffs.koplugin/releases),
+then extract its `diffs.koplugin` directory into KOReader's plugin directory:
 
 ```text
 koreader/plugins/diffs.koplugin/
@@ -41,6 +41,20 @@ Restart KOReader, open **Tools → Diffs**, and enter:
 The MVP uses GitHub's unauthenticated API and therefore supports public
 repositories only. GitHub may temporarily reject requests after its anonymous
 rate limit is reached.
+
+## Releases
+
+Releases are created automatically by GitHub Actions when a version tag is
+pushed. Tags must use the form `vMAJOR.MINOR.PATCH`, optionally followed by a
+pre-release suffix such as `-rc.1`:
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The workflow checks the codebase, packages the Lua files from `src/`, and
+attaches `diffs.koplugin.zip` to the GitHub Release.
 
 ## Viewer controls
 
@@ -59,8 +73,8 @@ The pure-Lua comparison model, diff parser, line pairing, intraline logic, and
 scrollbar calculations have Busted specifications in `spec/`.
 
 When this plugin is checked out inside a KOReader development tree, run the
-plugin specifications with KOReader's Busted environment and include the
-plugin root in `LUA_PATH` so modules such as `diff_parser` resolve correctly.
+plugin specifications with KOReader's Busted environment and include `src/`
+in `LUA_PATH` so modules such as `diff_parser` resolve correctly.
 
 ## MVP limits
 
