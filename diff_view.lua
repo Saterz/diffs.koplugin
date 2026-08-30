@@ -26,10 +26,8 @@ local PALETTE = {
     muted = Blitbuffer.COLOR_DARK_GRAY,
     header = Blitbuffer.COLOR_GRAY_D,
     hunk = Blitbuffer.COLOR_GRAY_E,
-    addition = Blitbuffer.COLOR_GRAY_E,
-    addition_strong = Blitbuffer.COLOR_GRAY_C,
-    deletion = Blitbuffer.COLOR_GRAY_D,
-    deletion_strong = Blitbuffer.COLOR_GRAY_B,
+    addition = Blitbuffer.COLOR_WHITE,
+    deletion = Blitbuffer.COLOR_GRAY_E,
 }
 
 --- Return the path that best identifies a parsed file.
@@ -443,8 +441,8 @@ function DiffView:paintIntraline(bb, content_x, y, cell_right, line)
     local clipped_x = math.max(content_x, start_x)
     local clipped_right = math.min(cell_right, start_x + changed_width)
     if clipped_right > clipped_x then
-        local shade = line.kind == "addition" and PALETTE.addition_strong or PALETTE.deletion_strong
-        bb:paintRect(clipped_x, y + 1, clipped_right - clipped_x, self.line_height - 2, shade)
+        local rule_y = line.kind == "addition" and y + self.line_height - 3 or y + 1
+        bb:paintRect(clipped_x, rule_y, clipped_right - clipped_x, 2, PALETTE.foreground)
     end
 end
 
@@ -492,6 +490,7 @@ function DiffView:paintCodeCell(bb, x, y, width, line, side)
         drawNumber(line.new_line)
     else
         drawNumber(line.old_line)
+        bb:paintRect(x + 2 + number_width - 1, y + 3, 1, self.line_height - 6, PALETTE.muted)
         drawNumber(line.new_line)
     end
     bb:paintRect(x + gutter_width - 1, y, 1, self.line_height, PALETTE.muted)
