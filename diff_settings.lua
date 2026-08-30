@@ -11,6 +11,7 @@ local Screen = Device.screen
 
 local DiffSettings = InputContainer:extend {
     name = "diff_settings",
+    covers_fullscreen = true,
     stop_events_propagation = true,
 }
 
@@ -38,6 +39,11 @@ end
 
 function DiffSettings:getSize()
     return self.dimen
+end
+
+function DiffSettings:onShow()
+    UIManager:setDirty(self, "full", self.dimen)
+    return true
 end
 
 function DiffSettings:onClose()
