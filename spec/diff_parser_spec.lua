@@ -81,4 +81,17 @@ Binary files a/image.png and b/image.png differ
         assert.is_true(patch.files[1].binary)
         assert.are.equal(0, #patch.files[1].hunks)
     end)
+
+    it("warns when hunk counts do not match their contents", function()
+        local patch = DiffParser.parse([[
+diff --git a/example.txt b/example.txt
+--- a/example.txt
++++ b/example.txt
+@@ -1,2 +1,2 @@
+-old
++new
+]])
+
+        assert.are.equal(1, #patch.warnings)
+    end)
 end)

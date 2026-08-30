@@ -1,6 +1,10 @@
 local CompareRequest = require("compare_request")
+local DiffParser = require("diff_parser")
+local DiffView = require("diff_view")
+local GitHubClient = require("github_client")
 local InfoMessage = require("ui/widget/infomessage")
 local MultiInputDialog = require("ui/widget/multiinputdialog")
+local NetworkMgr = require("ui/network/manager")
 local UIManager = require("ui/uimanager")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local _ = require("gettext")
@@ -12,6 +16,71 @@ local Diffs = WidgetContainer:extend {
 
 function Diffs:init()
     self.ui.menu:registerToMainMenu(self)
+end
+
+--- Download, parse, and display a validated comparison.
+-- @tparam table request normalized comparison request
+function Diffs:loadComparison(request)
+    if NetworkMgr:willRerunWhenOnline(function()
+        self:loadComparison(request)
+    end) then
+        return
+    end
+
+    local loading_message = InfoMessage:new {
+        text = _("Downloading comparison…"),
+        dismissable = false,
+    }
+    UIManager:show(loading_message)
+
+    UIManager:nextTick(function()
+        local call_ok, diff_text, metadata, comparison_error = pcall(
+            GitHubClient.compare,
+            GitHubClient,
+            request
+        )
+        UIManager:close(loading_message)
+
+        if not call_ok then
+            UIManager:show(InfoMessage:new {
+                text = _("The comparison failed: ") .. tostring(diff_text),
+            })
+            return
+        end
+        if not diff_text then
+            UIManager:show(InfoMessage:new {
+                text = _("The comparison failed: ") .. tostring(comparison_error),
+            })
+            return
+        end
+
+        local parse_ok, patch = pcall(DiffParser.parse, diff_text)
+        if not parse_ok then
+            UIManager:show(InfoMessage:new {
+                text = _("The diff could not be parsed: ") .. tostring(patch),
+            })
+            return
+        end
+        if #patch.files == 0 then
+            UIManager:show(InfoMessage:new {
+                text = _("These revisions do not contain any file changes."),
+            })
+            return
+        end
+
+        local title = string.format(
+            "%s/%s  %s…%s",
+            request.owner,
+            request.repo,
+            request.base_ref,
+            request.head_ref
+        )
+        UIManager:show(DiffView:new {
+            patch = patch,
+            metadata = metadata,
+            title = title,
+        })
+    end)
 end
 
 --- Open the form used to define a GitHub comparison.
@@ -57,10 +126,8 @@ function Diffs:openCompareDialog()
                             UIManager:show(InfoMessage:new { text = validation_error })
                             return
                         end
-
-                        UIManager:show(InfoMessage:new {
-                            text = _("The comparison form is ready. Diff loading is added in the next MVP step."),
-                        })
+                        UIManager:close(dialog)
+                        self:loadComparison(request)
                     end,
                 },
             },
@@ -83,4 +150,3 @@ function Diffs:addToMainMenu(menu_items)
 end
 
 return Diffs
-

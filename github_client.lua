@@ -1,6 +1,5 @@
 local JSON = require("json")
 local http = require("socket.http")
-local ltn12 = require("ltn12")
 local socketutil = require("socketutil")
 
 local GitHubClient = {
@@ -29,18 +28,22 @@ function GitHubClient:get(url, headers)
         url = url,
         method = "GET",
         headers = headers or {},
-        sink = ltn12.sink.table(response_chunks),
+        sink = socketutil.table_sink(response_chunks),
     }
 
     request.headers["User-Agent"] = self.user_agent
     request.headers["Accept"] = request.headers["Accept"] or "application/vnd.github+json"
+    request.headers["Accept-Encoding"] = "identity"
     request.headers["X-GitHub-Api-Version"] = "2022-11-28"
 
     socketutil:set_timeout(socketutil.LARGE_BLOCK_TIMEOUT, socketutil.LARGE_TOTAL_TIMEOUT)
-    local ok, status_code = http.request(request)
+    local call_ok, request_ok, status_code = pcall(http.request, request)
     socketutil:reset_timeout()
 
-    if not ok then
+    if not call_ok then
+        return nil, nil, tostring(request_ok)
+    end
+    if not request_ok then
         return nil, nil, tostring(status_code or "Network request failed.")
     end
 
@@ -67,7 +70,12 @@ function GitHubClient:compare(request)
         return nil, nil, transport_error
     end
     if status_code ~= 200 then
-        return nil, nil, string.format("GitHub comparison failed with HTTP %s.", tostring(status_code))
+        local decoded_ok, error_response = pcall(JSON.decode, response_body)
+        local message = decoded_ok and type(error_response) == "table" and error_response.message
+        return nil, nil, message or string.format(
+            "GitHub comparison failed with HTTP %s.",
+            tostring(status_code)
+        )
     end
 
     local decode_ok, comparison = pcall(JSON.decode, response_body)
@@ -98,4 +106,3 @@ function GitHubClient:compare(request)
 end
 
 return GitHubClient
-
