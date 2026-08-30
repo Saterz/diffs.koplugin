@@ -173,8 +173,7 @@ function DiffView:init()
     for digit = 0, 9 do
         self.digit_width = math.max(self.digit_width, self:measureCode(tostring(digit)))
     end
-    self.mode = Screen:getWidth() > Screen:getHeight()
-        and "split" or (self.preferences.portrait_mode or "combined")
+    self.mode = self.preferences.layout_mode or "combined"
     self.dimen = Geom:new {
         x = 0,
         y = 0,
@@ -228,7 +227,7 @@ end
 
 --- Persist and apply a viewer preference changed in the settings widget.
 function DiffView:applyPreference(key, value)
-    if key == "wrap_lines" or key == "portrait_mode" then
+    if key == "wrap_lines" or key == "layout_mode" then
         self.pending_scroll_progress = DiffViewState.scrollProgress(
             self.scroll_row,
             self.current_row_count or 0,
@@ -241,7 +240,7 @@ function DiffView:applyPreference(key, value)
         if value then
             self.scroll_column = 0
         end
-    elseif key == "portrait_mode" and self.dimen.w <= self.dimen.h then
+    elseif key == "layout_mode" then
         self.mode = value
     end
     if self.on_preference_change then
@@ -696,10 +695,20 @@ end
 function DiffView:paintTo(bb, x, y)
     local width = Screen:getWidth()
     local height = Screen:getHeight()
+    if width ~= self.dimen.w or height ~= self.dimen.h then
+        if self.pending_scroll_progress == nil then
+            self.pending_scroll_progress = DiffViewState.scrollProgress(
+                self.scroll_row,
+                self.current_row_count or 0,
+                self.current_visible_count or 0
+            )
+        end
+        self:finishScrollbarDrag(nil, false)
+    end
     self.dimen.x, self.dimen.y, self.dimen.w, self.dimen.h = x, y, width, height
     self:updateTouchZonesOnScreenResize(self.dimen)
 
-    self.mode = width > height and "split" or (self.preferences.portrait_mode or "combined")
+    self.mode = self.preferences.layout_mode or "combined"
 
     bb:paintRect(x, y, width, height, PALETTE.background)
     bb:paintRect(x, y, width, self.header_height, PALETTE.header)

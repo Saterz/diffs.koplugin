@@ -66,8 +66,8 @@ function DiffSettings:handleTap(gesture)
     elseif y < self.row_height * 2 then
         self:change("wrap_lines", not self.preferences.wrap_lines)
     elseif y < self.row_height * 3 then
-        local mode = self.preferences.portrait_mode == "split" and "combined" or "split"
-        self:change("portrait_mode", mode)
+        local mode = self.preferences.layout_mode == "split" and "combined" or "split"
+        self:change("layout_mode", mode)
     end
     return true
 end
@@ -119,8 +119,8 @@ function DiffSettings:paintTo(bb, x, y)
         x,
         y + self.row_height * 2,
         width,
-        _("Portrait layout"),
-        self.preferences.portrait_mode == "split" and _("Split") or _("Combined")
+        _("Layout"),
+        self.preferences.layout_mode == "split" and _("Split") or _("Combined")
     )
 end
 
