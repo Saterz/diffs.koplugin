@@ -78,6 +78,29 @@ local function wrapText(text, max_characters)
     return chunks
 end
 
+--- Remove the first `count` UTF-8 characters from text.
+-- @tparam string text source text
+-- @tparam number count number of characters to discard
+-- @treturn string remaining text
+local function dropCharacters(text, count)
+    local position = 1
+    local discarded = 0
+    while position <= #text and discarded < count do
+        local first_byte = text:byte(position)
+        local width = 1
+        if first_byte >= 0xF0 and first_byte <= 0xF7 then
+            width = 4
+        elseif first_byte >= 0xE0 and first_byte <= 0xEF then
+            width = 3
+        elseif first_byte >= 0xC0 and first_byte <= 0xDF then
+            width = 2
+        end
+        position = position + width
+        discarded = discarded + 1
+    end
+    return text:sub(position)
+end
+
 --- Copy a line for a wrapped continuation without mutating the parsed patch.
 -- @tparam table line source parsed line
 -- @tparam string content wrapped content
@@ -99,7 +122,6 @@ end
 
 function DiffView:init()
     self.code_face = Font:getFace("infont", 15)
-    self.title_face = Font:getFace("smallinfofont", 17)
     local face_height, face_ascender = self.code_face.ftsize:getHeightAndAscender()
     self.line_height = math.ceil(face_height) + 6
     self.baseline_offset = math.floor(face_ascender) + 3
@@ -113,6 +135,9 @@ function DiffView:init()
         w = Screen:getWidth(),
         h = Screen:getHeight(),
     }
+    if Device:hasKeys() then
+        self.key_events.Close = { { Device.input.group.Back } }
+    end
 
     self:registerTouchZones {
         {
@@ -239,7 +264,8 @@ end
 -- @tparam number cell_right clipping boundary
 -- @tparam table line parsed line containing intraline segments
 function DiffView:paintIntraline(bb, content_x, y, cell_right, line)
-    if not line.intraline or line.intraline.changed == "" or self.wrap_lines then
+    if not line.intraline or line.intraline.changed == ""
+        or self.wrap_lines or self.scroll_column > 0 then
         return
     end
     local start_x = content_x + self:measureCode(line.intraline.prefix)
@@ -258,7 +284,8 @@ end
 -- @tparam number y row top
 -- @tparam number width cell width
 -- @tparam table|nil line visual line, or nil for an empty split cell
-function DiffView:paintCodeCell(bb, x, y, width, line)
+-- @tparam string|nil side `left` or `right` in split mode; nil in combined mode
+function DiffView:paintCodeCell(bb, x, y, width, line, side)
     bb:paintRect(x, y, width, self.line_height, PALETTE.background)
     if not line then
         return
@@ -281,17 +308,20 @@ function DiffView:paintCodeCell(bb, x, y, width, line)
     end
 
     local gutter_width = math.min(88, math.floor(width * 0.28))
-    local old_number = line.old_line and tostring(line.old_line) or ""
-    local new_number = line.new_line and tostring(line.new_line) or ""
+    local old_number = side ~= "right" and line.old_line and tostring(line.old_line) or ""
+    local new_number = side ~= "left" and line.new_line and tostring(line.new_line) or ""
     local gutter = string.format("%s %s %s", old_number, new_number, marker)
     self:drawText(bb, x + 3, y, gutter, gutter_width - 5, PALETTE.muted)
     bb:paintRect(x + gutter_width - 1, y, 1, self.line_height, PALETTE.muted)
 
-    local scroll_pixels = self.scroll_column * self:measureCode("M")
-    local content_x = x + gutter_width + 5 - scroll_pixels
+    local content_x = x + gutter_width + 5
     local cell_right = x + width
     self:paintIntraline(bb, content_x, y, cell_right, line)
-    self:drawText(bb, content_x, y, line.content, cell_right - content_x - 2)
+    local visible_content = dropCharacters(line.content, self.scroll_column)
+    if line.no_newline then
+        visible_content = visible_content .. "  ⟂"
+    end
+    self:drawText(bb, content_x, y, visible_content, cell_right - content_x - 2)
 end
 
 --- Expand code rows into wrapped visual rows when wrapping is enabled.
@@ -402,13 +432,12 @@ function DiffView:paintTo(bb, x, y)
             self:paintCodeCell(bb, x, row_y, width, row.line)
         else
             local left_width = math.floor(width / 2)
-            self:paintCodeCell(bb, x, row_y, left_width, row.left)
+            self:paintCodeCell(bb, x, row_y, left_width, row.left, "left")
             bb:paintRect(x + left_width - 1, row_y, 2, self.line_height, PALETTE.foreground)
-            self:paintCodeCell(bb, x + left_width + 1, row_y, width - left_width - 1, row.right)
+            self:paintCodeCell(bb, x + left_width + 1, row_y, width - left_width - 1, row.right, "right")
         end
         row_y = row_y + self.line_height
     end
 end
 
 return DiffView
-
