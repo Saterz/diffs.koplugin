@@ -316,6 +316,11 @@ function DiffView:onClose()
     return true
 end
 
+--- Cancel delayed scrollbar work when KOReader removes the viewer.
+function DiffView:onCloseWidget()
+    self:finishScrollbarDrag(nil, false)
+end
+
 --- Handle taps in the custom title bar.
 -- Left closes, the center toggles layout, and the right toggles wrapping.
 -- @tparam table gesture KOReader tap gesture with a `pos` point
@@ -386,8 +391,13 @@ end
 
 --- Scrub the diff when a pan begins inside the scrollbar touch target.
 function DiffView:handlePan(gesture)
+    if not self.scrollbar then
+        self:finishScrollbarDrag(nil, false)
+        return false
+    end
     if not self.scrollbar_dragging then
-        if not DiffScrollbar.contains(self.scrollbar, gesture.pos.x, gesture.pos.y) then
+        local start_pos = gesture.start_pos or gesture.pos
+        if not DiffScrollbar.contains(self.scrollbar, start_pos.x, start_pos.y) then
             return false
         end
         self.scrollbar_dragging = true
@@ -403,17 +413,29 @@ function DiffView:handlePan(gesture)
     return true
 end
 
---- Finish a scrollbar scrub with one clean content repaint.
-function DiffView:handlePanRelease(gesture)
-    if not self.scrollbar_dragging then
-        return false
-    end
+--- Finalize a scrollbar scrub and cancel its delayed content repaint.
+-- @tparam number|nil y optional final absolute screen position
+-- @tparam boolean|nil repaint whether to repaint after cleanup; defaults to true
+-- @treturn boolean whether a drag was active
+function DiffView:finishScrollbarDrag(y, repaint)
+    local was_dragging = self.scrollbar_dragging == true
     self.scrollbar_dragging = false
     UIManager:unschedule(self._scrollbar_render)
-    if gesture and gesture.pos then
-        self.scroll_row = DiffScrollbar.rowAtY(self.scrollbar, gesture.pos.y)
+    if y and self.scrollbar then
+        self.scroll_row = DiffScrollbar.rowAtY(self.scrollbar, y)
     end
-    self:refresh()
+    if was_dragging and repaint ~= false then
+        self:refresh()
+    end
+    return was_dragging
+end
+
+--- Finish a scrollbar scrub with one clean content repaint.
+function DiffView:handlePanRelease(gesture)
+    local y = gesture and gesture.pos and gesture.pos.y
+    if not self:finishScrollbarDrag(y, true) then
+        return false
+    end
     return true
 end
 
@@ -421,6 +443,11 @@ end
 -- @tparam table gesture KOReader swipe gesture with a direction string
 -- @treturn boolean true when handled
 function DiffView:handleSwipe(gesture)
+    if self.scrollbar_dragging then
+        local end_y = gesture.end_pos and gesture.end_pos.y
+        self:finishScrollbarDrag(end_y, true)
+        return true
+    end
     local page_rows = math.max(1, math.floor((self.dimen.h - self.header_height) / self.line_height) - 1)
     if gesture.direction == "north" then
         self.scroll_row = self.scroll_row + page_rows
