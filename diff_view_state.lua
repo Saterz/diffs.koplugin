@@ -23,6 +23,27 @@ function DiffViewState.gutterMetrics(digit_width, digit_count, column_count, pad
     }
 end
 
+--- Divide a screen width into code cells and a dedicated scrollbar gutter.
+-- @tparam number width complete viewer width
+-- @tparam number scrollbar_width requested scrollbar gutter width
+-- @tparam boolean split whether the code area uses two panes
+-- @treturn table normalized code, pane, and scrollbar widths
+function DiffViewState.viewportMetrics(width, scrollbar_width, split)
+    width = math.max(2, math.floor(width or 0))
+    scrollbar_width = math.max(0, math.floor(scrollbar_width or 0))
+    scrollbar_width = math.min(scrollbar_width, width - 2)
+    local code_width = width - scrollbar_width
+    local left_width = split and math.floor(code_width / 2) or code_width
+    return {
+        code_width = code_width,
+        left_width = left_width,
+        right_width = split and code_width - left_width - 1 or 0,
+        right_offset = split and left_width + 1 or 0,
+        scrollbar_width = scrollbar_width,
+        scrollbar_offset = code_width,
+    }
+end
+
 --- Convert a row offset into progress across its scrollable range.
 function DiffViewState.scrollProgress(scroll_row, total_rows, visible_rows)
     local max_scroll = math.max(0, total_rows - visible_rows)

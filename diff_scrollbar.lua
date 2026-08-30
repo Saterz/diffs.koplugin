@@ -4,6 +4,16 @@ local function clamp(value, minimum, maximum)
     return math.max(minimum, math.min(value, maximum))
 end
 
+--- Return the width reserved exclusively for the scrollbar and its touch area.
+-- @tparam function|nil scale optional pixel scaling function
+-- @treturn number gutter width in pixels
+function DiffScrollbar.gutterWidth(scale)
+    scale = scale or function(value)
+        return value
+    end
+    return math.max(36, scale(36))
+end
+
 --- Calculate a row-based scrollbar with an enlarged touch target.
 -- @tparam table bounds content rectangle (`x`, `y`, `w`, `h`)
 -- @tparam number total_rows total number of visual rows
@@ -22,7 +32,6 @@ function DiffScrollbar.calculate(bounds, total_rows, visible_rows, scroll_row, s
     local margin = scale(9)
     local rail_width = math.max(1, scale(1))
     local thumb_width = math.max(rail_width + 2, scale(7))
-    local touch_width = math.max(28, scale(28))
     local rail_height = bounds.h - margin * 2
     if rail_height <= scale(24) then
         return nil
@@ -41,7 +50,7 @@ function DiffScrollbar.calculate(bounds, total_rows, visible_rows, scroll_row, s
         thumb_y = thumb_y + math.floor(travel * scroll_row / max_scroll)
     end
 
-    local thumb_x = bounds.x + bounds.w - margin - thumb_width
+    local thumb_x = bounds.x + math.floor((bounds.w - thumb_width) / 2)
     local rail_x = thumb_x + math.floor((thumb_width - rail_width) / 2)
     return {
         rail_x = rail_x,
@@ -55,9 +64,9 @@ function DiffScrollbar.calculate(bounds, total_rows, visible_rows, scroll_row, s
         travel = travel,
         max_scroll = max_scroll,
         touch = {
-            x = thumb_x + thumb_width - touch_width,
+            x = bounds.x,
             y = bounds.y,
-            w = touch_width,
+            w = bounds.w,
             h = bounds.h,
         },
     }
