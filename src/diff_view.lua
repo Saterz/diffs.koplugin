@@ -1,23 +1,18 @@
 local Blitbuffer = require("ffi/blitbuffer")
 local Device = require("device")
 local DiffLayout = require("diff_layout")
+local DiffIcon = require("diff_icon")
 local DiffScrollbar = require("diff_scrollbar")
 local DiffSettings = require("diff_settings")
 local DiffViewState = require("diff_view_state")
 local Font = require("ui/font")
 local Geom = require("ui/geometry")
 local InputContainer = require("ui/widget/container/inputcontainer")
-local ImageWidget = require("ui/widget/imagewidget")
 local RenderText = require("ui/rendertext")
 local UIManager = require("ui/uimanager")
 local _ = require("gettext")
 
 local Screen = Device.screen
-local module_source = debug.getinfo(1, "S").source
-local module_dir = module_source:sub(1, 1) == "@"
-    and module_source:sub(2):match("^(.*)/")
-    or ""
-local ICON_DIRECTORY = (module_dir or "") .. "assets/"
 local HEADER_CONTROL_WIDTH = 48
 local HEADER_ICON_SIZE = 40
 
@@ -286,6 +281,7 @@ end
 --- Open the dedicated viewer settings screen.
 function DiffView:openSettings()
     UIManager:show(DiffSettings:new {
+        plugin_path = self.plugin_path,
         preferences = self.preferences,
         on_change = function(key, value)
             self:applyPreference(key, value)
@@ -354,30 +350,13 @@ function DiffView:headerIconSize()
     return Screen:scaleBySize(HEADER_ICON_SIZE)
 end
 
---- Paint a centered SVG icon, with a text fallback for incomplete installs.
-function DiffView:paintHeaderIcon(bb, file, x, y, width, height, fallback)
+--- Paint a centered SVG icon from this plugin's installed assets directory.
+function DiffView:paintHeaderIcon(bb, file, x, y, width, height)
     local icon_size = self:headerIconSize()
     local icon_x = x + math.floor((width - icon_size) / 2)
     local icon_y = y + math.floor((height - icon_size) / 2)
-    local ok, widget = pcall(ImageWidget.new, ImageWidget, {
-        file = ICON_DIRECTORY .. file,
-        width = icon_size,
-        height = icon_size,
-        scale_factor = 0,
-        alpha = true,
-        is_icon = true,
-        file_do_cache = true,
-    })
-    if ok and widget then
-        local painted = pcall(widget.paintTo, widget, bb, icon_x, icon_y)
-        if widget.free then
-            widget:free()
-        end
-        if painted then
-            return
-        end
-    end
-    self:drawText(bb, x, y, fallback, width, PALETTE.foreground, true)
+    local plugin_path = assert(self.plugin_path, "Diffs plugin path is required for icon assets")
+    DiffIcon.paint(bb, plugin_path .. "/assets/" .. file, icon_x, icon_y, icon_size, icon_size)
 end
 
 --- Close the viewer.
@@ -834,8 +813,7 @@ function DiffView:paintTo(bb, x, y)
         controls_x,
         y,
         control_width,
-        self.header_height,
-        "⚙"
+        self.header_height
     )
     self:paintHeaderIcon(
         bb,
@@ -843,8 +821,7 @@ function DiffView:paintTo(bb, x, y)
         controls_x + control_width,
         y,
         control_width,
-        self.header_height,
-        "×"
+        self.header_height
     )
     self:drawText(
         bb,
