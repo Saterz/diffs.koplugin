@@ -25,9 +25,9 @@ local PALETTE = {
     header = Blitbuffer.COLOR_GRAY_D,
     hunk = Blitbuffer.COLOR_GRAY_E,
     addition = Blitbuffer.COLOR_GRAY_E,
-    addition_strong = Blitbuffer.COLOR_GRAY_B,
-    deletion = Blitbuffer.COLOR_GRAY_C,
-    deletion_strong = Blitbuffer.COLOR_GRAY_8,
+    addition_strong = Blitbuffer.COLOR_GRAY_C,
+    deletion = Blitbuffer.COLOR_GRAY_D,
+    deletion_strong = Blitbuffer.COLOR_GRAY_B,
 }
 
 --- Return the path that best identifies a parsed file.
@@ -113,6 +113,7 @@ local function visualLine(line, content, continuation)
     return {
         kind = line.kind,
         content = content,
+        continuation = continuation,
         old_line = continuation and nil or line.old_line,
         new_line = continuation and nil or line.new_line,
         no_newline = line.no_newline,
@@ -128,6 +129,7 @@ function DiffView:init()
     self.header_height = self.line_height * 2
     self.combined_rows = DiffLayout.combined(self.patch)
     self.split_rows = DiffLayout.split(self.patch)
+    self.line_number_digits = self:findLineNumberDigits()
     self.mode = Screen:getWidth() > Screen:getHeight() and "split" or "combined"
     self.dimen = Geom:new {
         x = 0,
@@ -157,6 +159,33 @@ function DiffView:init()
             end,
         },
     }
+end
+
+--- Find the number of digits needed by the largest source line number.
+-- A fixed width prevents the gutter from shifting as the diff is scrolled.
+-- @treturn number positive digit count
+function DiffView:findLineNumberDigits()
+    local largest = 1
+    for _, file in ipairs(self.patch.files) do
+        for _, hunk in ipairs(file.hunks) do
+            for _, line in ipairs(hunk.lines) do
+                largest = math.max(largest, line.old_line or 0, line.new_line or 0)
+            end
+        end
+    end
+    return #tostring(largest)
+end
+
+--- Return pixel widths for the line-number and change-marker columns.
+-- @tparam string|nil side split side, or nil for combined mode
+-- @treturn number gutter width through its separator
+-- @treturn number marker column width
+function DiffView:codeColumnWidths(side)
+    local number_width = self:measureCode(string.rep("0", self.line_number_digits)) + 5
+    local number_columns = side and 1 or 2
+    local gutter_width = number_width * number_columns + 5
+    local marker_width = self:measureCode("+") + 8
+    return gutter_width, marker_width
 end
 
 --- Return the full-screen size requested by this view.
@@ -307,14 +336,28 @@ function DiffView:paintCodeCell(bb, x, y, width, line, side)
         bb:paintRect(x, y + self.line_height - 2, width, 2, PALETTE.foreground)
     end
 
-    local gutter_width = math.min(88, math.floor(width * 0.28))
-    local old_number = side ~= "right" and line.old_line and tostring(line.old_line) or ""
-    local new_number = side ~= "left" and line.new_line and tostring(line.new_line) or ""
-    local gutter = string.format("%s %s %s", old_number, new_number, marker)
-    self:drawText(bb, x + 3, y, gutter, gutter_width - 5, PALETTE.muted)
+    local gutter_width, marker_width = self:codeColumnWidths(side)
+    local number_width = math.floor((gutter_width - 5) / (side and 1 or 2))
+    local number_x = x + 2
+    local function drawNumber(value)
+        local text = value and tostring(value) or ""
+        local text_width = self:measureCode(text)
+        self:drawText(bb, number_x + number_width - text_width - 3, y, text, number_width, PALETTE.muted)
+        number_x = number_x + number_width
+    end
+    if side == "left" then
+        drawNumber(line.old_line)
+    elseif side == "right" then
+        drawNumber(line.new_line)
+    else
+        drawNumber(line.old_line)
+        drawNumber(line.new_line)
+    end
     bb:paintRect(x + gutter_width - 1, y, 1, self.line_height, PALETTE.muted)
 
-    local content_x = x + gutter_width + 5
+    local marker_x = x + gutter_width + 3
+    self:drawText(bb, marker_x, y, marker, marker_width - 3, PALETTE.foreground, true)
+    local content_x = x + gutter_width + marker_width
     local cell_right = x + width
     self:paintIntraline(bb, content_x, y, cell_right, line)
     local visible_content = dropCharacters(line.content, self.scroll_column)
@@ -329,16 +372,43 @@ end
 -- @tparam number cell_width available code-cell width
 -- @treturn table visual row array
 function DiffView:visualRows(rows, cell_width)
-    if not self.wrap_lines then
-        return rows
-    end
-
-    local gutter_width = math.min(88, math.floor(cell_width * 0.28))
+    local gutter_width, marker_width = self:codeColumnWidths(self.mode == "split" and "left" or nil)
     local character_width = math.max(1, self:measureCode("M"))
-    local max_characters = math.max(1, math.floor((cell_width - gutter_width - 8) / character_width))
+    local max_characters = math.max(
+        1,
+        math.floor((cell_width - gutter_width - marker_width - 4) / character_width)
+    )
+    local metadata_characters = math.max(1, math.floor((self.dimen.w - 10) / character_width))
     local visual_rows = {}
     for _, row in ipairs(rows) do
-        if row.kind ~= "code" then
+        if row.kind == "file" then
+            local path_chunks = wrapText(filePath(row.file), metadata_characters)
+            for index, chunk in ipairs(path_chunks) do
+                table.insert(visual_rows, {
+                    kind = index == 1 and "file" or "file_continuation",
+                    file = row.file,
+                    metadata_text = chunk,
+                })
+            end
+            table.insert(visual_rows, {
+                kind = "file_details",
+                file = row.file,
+                metadata_text = string.format(
+                    "[%s]  +%d −%d",
+                    row.file.status,
+                    row.file.additions,
+                    row.file.deletions
+                ),
+            })
+        elseif row.kind == "hunk" then
+            for index, chunk in ipairs(wrapText(row.hunk.header, metadata_characters)) do
+                table.insert(visual_rows, {
+                    kind = index == 1 and "hunk" or "hunk_continuation",
+                    hunk = row.hunk,
+                    metadata_text = chunk,
+                })
+            end
+        elseif row.kind ~= "code" or not self.wrap_lines then
             table.insert(visual_rows, row)
         elseif self.mode == "combined" then
             local chunks = wrapText(row.line.content, max_characters)
@@ -371,20 +441,20 @@ end
 -- @tparam number width row width
 -- @tparam table row logical row
 function DiffView:paintMetadataRow(bb, x, y, width, row)
-    if row.kind == "file" then
+    if row.kind == "file" or row.kind == "file_continuation" or row.kind == "file_details" then
         bb:paintRect(x, y, width, self.line_height, PALETTE.header)
-        local file = row.file
-        local label = string.format(
-            "%s  [%s]  +%d −%d",
-            filePath(file),
-            file.status,
-            file.additions,
-            file.deletions
+        self:drawText(
+            bb,
+            x + 5,
+            y,
+            row.metadata_text or filePath(row.file),
+            width - 10,
+            PALETTE.foreground,
+            row.kind ~= "file_details"
         )
-        self:drawText(bb, x + 5, y, label, width - 10, PALETTE.foreground, true)
-    elseif row.kind == "hunk" then
+    elseif row.kind == "hunk" or row.kind == "hunk_continuation" then
         bb:paintRect(x, y, width, self.line_height, PALETTE.hunk)
-        self:drawText(bb, x + 5, y, row.hunk.header, width - 10, PALETTE.muted)
+        self:drawText(bb, x + 5, y, row.metadata_text or row.hunk.header, width - 10, PALETTE.muted)
     else
         bb:paintRect(x, y, width, self.line_height, PALETTE.background)
         self:drawText(bb, x + 5, y, _("Binary file changed"), width - 10, PALETTE.muted, true)
