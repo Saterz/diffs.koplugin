@@ -1,6 +1,7 @@
 local Blitbuffer = require("ffi/blitbuffer")
 local Device = require("device")
 local DiffLayout = require("diff_layout")
+local DiffScrollbar = require("diff_scrollbar")
 local Font = require("ui/font")
 local Geom = require("ui/geometry")
 local InputContainer = require("ui/widget/container/inputcontainer")
@@ -137,6 +138,11 @@ function DiffView:init()
         w = Screen:getWidth(),
         h = Screen:getHeight(),
     }
+    self._scrollbar_render = function()
+        if self.scrollbar_dragging then
+            UIManager:setDirty(self, "ui", self.content_dimen)
+        end
+    end
     if Device:hasKeys() then
         self.key_events.Close = { { Device.input.group.Back } }
     end
@@ -156,6 +162,22 @@ function DiffView:init()
             screen_zone = { ratio_x = 0, ratio_y = 0, ratio_w = 1, ratio_h = 1 },
             handler = function(gesture)
                 return self:handleSwipe(gesture)
+            end,
+        },
+        {
+            id = "diff_view_pan",
+            ges = "pan",
+            screen_zone = { ratio_x = 0, ratio_y = 0, ratio_w = 1, ratio_h = 1 },
+            handler = function(gesture)
+                return self:handlePan(gesture)
+            end,
+        },
+        {
+            id = "diff_view_pan_release",
+            ges = "pan_release",
+            screen_zone = { ratio_x = 0, ratio_y = 0, ratio_w = 1, ratio_h = 1 },
+            handler = function(gesture)
+                return self:handlePanRelease(gesture)
             end,
         },
     }
@@ -211,6 +233,11 @@ end
 -- @tparam table gesture KOReader tap gesture with a `pos` point
 -- @treturn boolean true when handled
 function DiffView:handleTap(gesture)
+    if DiffScrollbar.contains(self.scrollbar, gesture.pos.x, gesture.pos.y) then
+        self.scroll_row = DiffScrollbar.rowAtY(self.scrollbar, gesture.pos.y)
+        self:refresh()
+        return true
+    end
     if gesture.pos.y > self.header_height then
         return true
     end
@@ -233,6 +260,84 @@ function DiffView:handleTap(gesture)
         self.scroll_row = 0
         self:refresh()
     end
+    return true
+end
+
+--- Draw only the moving scrollbar thumb to the physical screen buffer.
+-- Updating the old and new footprints separately avoids a tall black refresh
+-- artifact when the user scrubs a long distance on an e-ink panel.
+function DiffView:paintDragThumb(y)
+    local scrollbar = self.scrollbar
+    local thumb_y = DiffScrollbar.thumbAtY(scrollbar, y)
+    if not thumb_y or thumb_y == scrollbar.thumb_y then
+        return
+    end
+
+    local old_y = scrollbar.thumb_y
+    local function footprint(top)
+        return Geom:new {
+            x = scrollbar.thumb_x - 1,
+            y = math.max(scrollbar.rail_y, top - 1),
+            w = scrollbar.thumb_width + 2,
+            h = math.min(
+                scrollbar.rail_y + scrollbar.rail_height,
+                top + scrollbar.thumb_height + 1
+            ) - math.max(scrollbar.rail_y, top - 1),
+        }
+    end
+    local old_rect = footprint(old_y)
+    local new_rect = footprint(thumb_y)
+    Screen.bb:paintRect(old_rect.x, old_rect.y, old_rect.w, old_rect.h, PALETTE.background)
+    Screen.bb:paintRect(new_rect.x, new_rect.y, new_rect.w, new_rect.h, PALETTE.background)
+    Screen.bb:paintRect(
+        scrollbar.rail_x,
+        scrollbar.rail_y,
+        scrollbar.rail_width,
+        scrollbar.rail_height,
+        PALETTE.foreground
+    )
+    Screen.bb:paintRect(
+        scrollbar.thumb_x,
+        thumb_y,
+        scrollbar.thumb_width,
+        scrollbar.thumb_height,
+        PALETTE.foreground
+    )
+    scrollbar.thumb_y = thumb_y
+    UIManager:setDirty(nil, "fast", old_rect)
+    UIManager:setDirty(nil, "fast", new_rect)
+end
+
+--- Scrub the diff when a pan begins inside the scrollbar touch target.
+function DiffView:handlePan(gesture)
+    if not self.scrollbar_dragging then
+        if not DiffScrollbar.contains(self.scrollbar, gesture.pos.x, gesture.pos.y) then
+            return false
+        end
+        self.scrollbar_dragging = true
+    end
+
+    self:paintDragThumb(gesture.pos.y)
+    local next_row = DiffScrollbar.rowAtY(self.scrollbar, gesture.pos.y)
+    if next_row ~= self.scroll_row then
+        self.scroll_row = next_row
+        UIManager:unschedule(self._scrollbar_render)
+        UIManager:scheduleIn(0.18, self._scrollbar_render)
+    end
+    return true
+end
+
+--- Finish a scrollbar scrub with one clean content repaint.
+function DiffView:handlePanRelease(gesture)
+    if not self.scrollbar_dragging then
+        return false
+    end
+    self.scrollbar_dragging = false
+    UIManager:unschedule(self._scrollbar_render)
+    if gesture and gesture.pos then
+        self.scroll_row = DiffScrollbar.rowAtY(self.scrollbar, gesture.pos.y)
+    end
+    self:refresh()
     return true
 end
 
@@ -492,6 +597,12 @@ function DiffView:paintTo(bb, x, y)
     local visible_count = math.max(1, math.floor((height - self.header_height) / self.line_height))
     local max_scroll = math.max(0, #rows - visible_count)
     self.scroll_row = math.min(self.scroll_row, max_scroll)
+    self.content_dimen = Geom:new {
+        x = x,
+        y = y + self.header_height,
+        w = width,
+        h = height - self.header_height,
+    }
 
     local row_y = y + self.header_height
     for index = self.scroll_row + 1, math.min(#rows, self.scroll_row + visible_count) do
@@ -507,6 +618,32 @@ function DiffView:paintTo(bb, x, y)
             self:paintCodeCell(bb, x + left_width + 1, row_y, width - left_width - 1, row.right, "right")
         end
         row_y = row_y + self.line_height
+    end
+
+    self.scrollbar = DiffScrollbar.calculate(
+        self.content_dimen,
+        #rows,
+        visible_count,
+        self.scroll_row,
+        function(value)
+            return Screen:scaleBySize(value)
+        end
+    )
+    if self.scrollbar then
+        bb:paintRect(
+            self.scrollbar.rail_x,
+            self.scrollbar.rail_y,
+            self.scrollbar.rail_width,
+            self.scrollbar.rail_height,
+            PALETTE.foreground
+        )
+        bb:paintRect(
+            self.scrollbar.thumb_x,
+            self.scrollbar.thumb_y,
+            self.scrollbar.thumb_width,
+            self.scrollbar.thumb_height,
+            PALETTE.foreground
+        )
     end
 end
 
