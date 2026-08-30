@@ -1,0 +1,50 @@
+name: Release Plugin
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install Lua tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes lua-check lua-filesystem rsync zip
+
+      - name: Check codebase
+        run: bash scripts/check.sh
+
+  release:
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install packaging tools
+        run: sudo apt-get update && sudo apt-get install --yes rsync zip
+
+      - name: Create plugin ZIP
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: bash scripts/package.sh "${RELEASE_TAG#v}"
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: "*.zip"
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
