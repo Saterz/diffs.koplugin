@@ -68,8 +68,6 @@ function DiffSettings:handleTap(gesture)
     elseif y < self.row_height * 3 then
         local mode = self.preferences.portrait_mode == "split" and "combined" or "split"
         self:change("portrait_mode", mode)
-    elseif y < self.row_height * 4 then
-        self:change("show_scrollbar", self.preferences.show_scrollbar == false)
     end
     return true
 end
@@ -123,14 +121,6 @@ function DiffSettings:paintTo(bb, x, y)
         width,
         _("Portrait layout"),
         self.preferences.portrait_mode == "split" and _("Split") or _("Combined")
-    )
-    self:paintRow(
-        bb,
-        x,
-        y + self.row_height * 3,
-        width,
-        _("Fast scrollbar"),
-        self.preferences.show_scrollbar == false and _("Off") or _("On")
     )
 end
 

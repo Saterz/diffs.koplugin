@@ -814,7 +814,7 @@ function DiffView:paintTo(bb, x, y)
         PALETTE.muted
     )
 
-    self.scrollbar = self.preferences.show_scrollbar ~= false and DiffScrollbar.calculate(
+    self.scrollbar = DiffScrollbar.calculate(
         self.scrollbar_dimen,
         #rows,
         visible_count,
