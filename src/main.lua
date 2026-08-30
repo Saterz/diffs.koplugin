@@ -83,6 +83,7 @@ function Diffs:loadComparison(request)
         UIManager:show(DiffView:new {
             patch = patch,
             metadata = metadata,
+            plugin_path = self.path,
             title = string.format("%s/%s", request.owner, request.repo),
             comparison_title = string.format("%s → %s", request.base_ref, request.head_ref),
             preferences = self.preferences,
