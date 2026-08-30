@@ -14,7 +14,8 @@ GitHub repository.
 - Emphasize paired character changes within modified lines.
 - Preserve unknown Git file headers and report malformed hunk counts as warnings.
 - Remember the last comparison fields and viewer settings across restarts.
-- Scrub quickly through long diffs with a touch-friendly e-ink scrollbar.
+- Scrub quickly through diffs with an always-visible, touch-friendly e-ink
+  scrollbar in its own right-side gutter.
 - Identify additions and removals without relying on color:
   - additions use a light gray background and a `+` marker;
   - removals use a distinct, slightly stronger light gray and a `−` marker;
@@ -45,8 +46,8 @@ rate limit is reached.
 The viewer title bar has two icon controls:
 
 - **×** closes the viewer.
-- **⚙** opens persistent settings for line wrapping, portrait layout, and the
-  fast scrollbar. Landscape is always split.
+- **⚙** opens persistent settings for line wrapping and portrait layout.
+  Landscape is always split.
 
 Swipe north or south to move by a page. With wrapping disabled, swipe west or
 east to scroll long lines horizontally. Drag the scrollbar to scrub rapidly or

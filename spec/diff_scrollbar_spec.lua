@@ -23,8 +23,13 @@ describe("diff scrollbar", function()
         ))
     end)
 
-    it("does not render when every row is visible", function()
-        assert.is_nil(DiffScrollbar.calculate(bounds, 20, 20, 0))
+    it("stays visible when every row fits", function()
+        local scrollbar = assert(DiffScrollbar.calculate(bounds, 20, 20, 0))
+
+        assert.are.equal(scrollbar.rail_height, scrollbar.thumb_height)
+        assert.are.equal(0, scrollbar.travel)
+        assert.are.equal(0, scrollbar.max_scroll)
+        assert.are.equal(0, DiffScrollbar.rowAtY(scrollbar, bounds.y + bounds.h))
     end)
 
     it("reserves a touch-friendly dedicated gutter", function()

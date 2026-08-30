@@ -19,11 +19,13 @@ local Diffs = WidgetContainer:extend {
 
 function Diffs:init()
     self.settings = LuaSettings:open(self.settings_file)
+    if self.settings:has("show_scrollbar") then
+        self.settings:delSetting("show_scrollbar"):flush()
+    end
     self.preferences = {
         wrap_lines = self.settings:isTrue("wrap_lines"),
         portrait_mode = self.settings:readSetting("portrait_mode") == "split"
             and "split" or "combined",
-        show_scrollbar = self.settings:nilOrTrue("show_scrollbar"),
     }
     self.ui.menu:registerToMainMenu(self)
 end

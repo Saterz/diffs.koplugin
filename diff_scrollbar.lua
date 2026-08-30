@@ -22,7 +22,7 @@ end
 -- @tparam function|nil scale optional pixel scaling function
 -- @treturn table|nil scrollbar geometry, or nil when no scrolling is needed
 function DiffScrollbar.calculate(bounds, total_rows, visible_rows, scroll_row, scale)
-    if total_rows <= visible_rows or visible_rows <= 0 or bounds.h <= 0 then
+    if visible_rows <= 0 or bounds.h <= 0 then
         return nil
     end
     scale = scale or function(value)
@@ -37,16 +37,18 @@ function DiffScrollbar.calculate(bounds, total_rows, visible_rows, scroll_row, s
         return nil
     end
 
+    total_rows = math.max(0, total_rows or 0)
+    local effective_total = math.max(1, total_rows, visible_rows)
     local thumb_height = math.max(
         scale(28),
-        math.floor(rail_height * visible_rows / total_rows)
+        math.floor(rail_height * visible_rows / effective_total)
     )
     thumb_height = math.min(rail_height, thumb_height)
     local travel = rail_height - thumb_height
-    local max_scroll = total_rows - visible_rows
+    local max_scroll = math.max(0, total_rows - visible_rows)
     scroll_row = clamp(scroll_row or 0, 0, max_scroll)
     local thumb_y = bounds.y + margin
-    if travel > 0 then
+    if travel > 0 and max_scroll > 0 then
         thumb_y = thumb_y + math.floor(travel * scroll_row / max_scroll)
     end
 
