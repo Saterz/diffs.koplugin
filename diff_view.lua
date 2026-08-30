@@ -39,10 +39,10 @@ local PALETTE = {
     header = requiredColor("COLOR_GRAY_D"),
     hunk = requiredColor("COLOR_GRAY_E"),
     addition = requiredColor("COLOR_GRAY_E"),
-    addition_strong = requiredColor("COLOR_LIGHT_GRAY"),
     deletion = requiredColor("COLOR_GRAY_D"),
-    deletion_strong = requiredColor("COLOR_GRAY_B"),
+    intraline = requiredColor("COLOR_GRAY_B"),
 }
+DiffView._palette = PALETTE
 
 --- Return the path that best identifies a parsed file.
 -- @tparam table file parsed file
@@ -528,9 +528,13 @@ function DiffView:paintIntraline(bb, content_x, y, cell_right, line)
     local clipped_x = math.max(content_x, start_x)
     local clipped_right = math.min(cell_right, start_x + changed_width)
     if clipped_right > clipped_x then
-        local shade = line.kind == "addition"
-            and PALETTE.addition_strong or PALETTE.deletion_strong
-        bb:paintRect(clipped_x, y + 1, clipped_right - clipped_x, self.line_height - 2, shade)
+        bb:paintRect(
+            clipped_x,
+            y + 1,
+            clipped_right - clipped_x,
+            self.line_height - 2,
+            PALETTE.intraline
+        )
     end
 end
 
