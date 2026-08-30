@@ -11,7 +11,7 @@ function DiffScrollbar.gutterWidth(scale)
     scale = scale or function(value)
         return value
     end
-    return math.max(36, scale(36))
+    return math.max(24, scale(24))
 end
 
 --- Calculate a row-based scrollbar with an enlarged touch target.

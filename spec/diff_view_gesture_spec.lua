@@ -87,6 +87,27 @@ describe("diff view gestures", function()
         assert.is_false(view.scrollbar_dragging)
     end)
 
+    it("places close immediately left of settings in the header", function()
+        local view = newView()
+        function view:headerControlWidth()
+            return 40
+        end
+        function view:onClose()
+            self.closed = true
+            return true
+        end
+        function view:openSettings()
+            self.settings_opened = true
+        end
+
+        view:handleTap({ pos = { x = 125, y = 5 } })
+        assert.is_true(view.closed)
+        assert.is_nil(view.settings_opened)
+
+        view:handleTap({ pos = { x = 175, y = 5 } })
+        assert.is_true(view.settings_opened)
+    end)
+
     it("cleans up a pending drag when the viewer closes", function()
         local view = newView()
         view.scrollbar_dragging = true

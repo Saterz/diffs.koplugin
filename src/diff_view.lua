@@ -7,11 +7,19 @@ local DiffViewState = require("diff_view_state")
 local Font = require("ui/font")
 local Geom = require("ui/geometry")
 local InputContainer = require("ui/widget/container/inputcontainer")
+local ImageWidget = require("ui/widget/imagewidget")
 local RenderText = require("ui/rendertext")
 local UIManager = require("ui/uimanager")
 local _ = require("gettext")
 
 local Screen = Device.screen
+local module_source = debug.getinfo(1, "S").source
+local module_dir = module_source:sub(1, 1) == "@"
+    and module_source:sub(2):match("^(.*)/")
+    or ""
+local ICON_DIRECTORY = (module_dir or "") .. "assets/"
+local HEADER_CONTROL_WIDTH = 48
+local HEADER_ICON_SIZE = 40
 
 --- Resolve a KOReader palette constant and fail before painting if it is invalid.
 -- `paintRect` treats nil as black, so silently accepting a misspelled constant
@@ -334,6 +342,44 @@ function DiffView:refresh()
     UIManager:setDirty(self, "ui", self.dimen, true)
 end
 
+--- Return the fixed-width title-bar button target.
+-- The control size deliberately follows the current visual design rather than
+-- the header height, so future header changes do not resize the icons.
+function DiffView:headerControlWidth()
+    return Screen:scaleBySize(HEADER_CONTROL_WIDTH)
+end
+
+--- Return the fixed SVG artwork size used by title-bar controls.
+function DiffView:headerIconSize()
+    return Screen:scaleBySize(HEADER_ICON_SIZE)
+end
+
+--- Paint a centered SVG icon, with a text fallback for incomplete installs.
+function DiffView:paintHeaderIcon(bb, file, x, y, width, height, fallback)
+    local icon_size = self:headerIconSize()
+    local icon_x = x + math.floor((width - icon_size) / 2)
+    local icon_y = y + math.floor((height - icon_size) / 2)
+    local ok, widget = pcall(ImageWidget.new, ImageWidget, {
+        file = ICON_DIRECTORY .. file,
+        width = icon_size,
+        height = icon_size,
+        scale_factor = 0,
+        alpha = true,
+        is_icon = true,
+        file_do_cache = true,
+    })
+    if ok and widget then
+        local painted = pcall(widget.paintTo, widget, bb, icon_x, icon_y)
+        if widget.free then
+            widget:free()
+        end
+        if painted then
+            return
+        end
+    end
+    self:drawText(bb, x, y, fallback, width, PALETTE.foreground, true)
+end
+
 --- Close the viewer.
 -- @treturn boolean true because the event was handled
 function DiffView:onClose()
@@ -347,7 +393,7 @@ function DiffView:onCloseWidget()
 end
 
 --- Handle taps in the custom title bar.
--- Left closes, the center toggles layout, and the right toggles wrapping.
+-- Close and settings are grouped at the right edge, in that order.
 -- @tparam table gesture KOReader tap gesture with a `pos` point
 -- @treturn boolean true when handled
 function DiffView:handleTap(gesture)
@@ -360,10 +406,11 @@ function DiffView:handleTap(gesture)
         return true
     end
 
-    local icon_width = self.line_height * 2
-    if gesture.pos.x < icon_width then
+    local control_width = self:headerControlWidth()
+    local controls_x = self.dimen.w - control_width * 2
+    if gesture.pos.x >= controls_x and gesture.pos.x < controls_x + control_width then
         return self:onClose()
-    elseif gesture.pos.x >= self.dimen.w - icon_width then
+    elseif gesture.pos.x >= controls_x + control_width then
         self:openSettings()
     end
     return true
@@ -768,33 +815,35 @@ function DiffView:paintTo(bb, x, y)
 
     bb:paintRect(x, y, width, height, PALETTE.background)
     bb:paintRect(x, y, width, self.header_height, PALETTE.header)
-    local icon_width = self.line_height * 2
-    local title_width = width - icon_width * 2
-    self:drawText(bb, x + 8, y + 2, "×", icon_width - 8, PALETTE.foreground, true)
+    local control_width = self:headerControlWidth()
+    local controls_width = control_width * 2
+    local controls_x = x + width - controls_width
+    local title_width = width - controls_width - 16
     self:drawText(
         bb,
-        x + icon_width,
+        x + 8,
         y + 2,
         self:fitText(self.title or _("Diffs"), title_width, true),
         title_width,
         PALETTE.foreground,
         true
     )
-    self:drawText(
+    self:paintHeaderIcon(bb, "x.svg", controls_x, y, control_width, self.header_height, "×")
+    self:paintHeaderIcon(
         bb,
-        x + width - icon_width + 6,
-        y + 2,
-        "⚙",
-        icon_width - 8,
-        PALETTE.foreground,
-        true
+        "settings.svg",
+        controls_x + control_width,
+        y,
+        control_width,
+        self.header_height,
+        "⚙"
     )
     self:drawText(
         bb,
         x + 8,
         y + self.line_height,
-        self:fitText(self.comparison_title or "", width - 16),
-        width - 16,
+        self:fitText(self.comparison_title or "", title_width),
+        title_width,
         PALETTE.foreground
     )
     bb:paintRect(x, y + self.header_height - 2, width, 2, PALETTE.foreground)
