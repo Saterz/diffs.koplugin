@@ -14,6 +14,7 @@ local Screen = Device.screen
 
 local DiffView = InputContainer:extend {
     name = "diff_view",
+    covers_fullscreen = true,
     stop_events_propagation = true,
     wrap_lines = false,
     scroll_row = 0,
@@ -99,6 +100,29 @@ local function dropCharacters(text, count)
         discarded = discarded + 1
     end
     return text:sub(position)
+end
+
+--- Return the first `count` UTF-8 characters from text.
+-- @tparam string text source text
+-- @tparam number count number of characters to retain
+-- @treturn string retained prefix
+local function takeCharacters(text, count)
+    local position = 1
+    local retained = 0
+    while position <= #text and retained < count do
+        local first_byte = text:byte(position)
+        local width = 1
+        if first_byte >= 0xF0 and first_byte <= 0xF7 then
+            width = 4
+        elseif first_byte >= 0xE0 and first_byte <= 0xEF then
+            width = 3
+        elseif first_byte >= 0xC0 and first_byte <= 0xDF then
+            width = 2
+        end
+        position = position + width
+        retained = retained + 1
+    end
+    return text:sub(1, position - 1)
 end
 
 --- Copy a line for a wrapped continuation without mutating the parsed patch.
@@ -246,9 +270,15 @@ function DiffView:getSize()
     return self.dimen
 end
 
+--- Force the complete first frame to replace the dialog beneath it.
+function DiffView:onShow()
+    UIManager:setDirty(self, "full", self.dimen)
+    return true
+end
+
 --- Schedule an e-ink UI refresh after navigation or a mode change.
 function DiffView:refresh()
-    UIManager:setDirty(self, "ui")
+    UIManager:setDirty(self, "ui", self.dimen)
 end
 
 --- Close the viewer.
@@ -432,11 +462,11 @@ end
 -- @tparam number cell_right clipping boundary
 -- @tparam table line parsed line containing intraline segments
 function DiffView:paintIntraline(bb, content_x, y, cell_right, line)
-    if not line.intraline or line.intraline.changed == ""
-        or self.wrap_lines or self.scroll_column > 0 then
+    if not line.intraline or line.intraline.changed == "" or self.wrap_lines then
         return
     end
-    local start_x = content_x + self:measureCode(line.intraline.prefix)
+    local hidden_width = self:measureCode(takeCharacters(line.content, self.scroll_column))
+    local start_x = content_x + self:measureCode(line.intraline.prefix) - hidden_width
     local changed_width = math.max(2, self:measureCode(line.intraline.changed))
     local clipped_x = math.max(content_x, start_x)
     local clipped_right = math.min(cell_right, start_x + changed_width)
