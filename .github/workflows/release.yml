@@ -18,7 +18,7 @@ jobs:
       - name: Install Lua tooling
         run: |
           sudo apt-get update
-          sudo apt-get install --yes lua-check lua-filesystem rsync zip
+          sudo apt-get install --yes lua-check rsync zip
 
       - name: Check codebase
         run: bash scripts/check.sh
