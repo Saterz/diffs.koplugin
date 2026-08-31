@@ -32,9 +32,9 @@ end
 
 --- Download, parse, and display a validated comparison.
 -- @tparam table request normalized comparison request
-function Diffs:loadComparison(request, token)
+function Diffs:loadComparison(request)
     if NetworkMgr:willRerunWhenOnline(function()
-        self:loadComparison(request, token)
+        self:loadComparison(request)
     end) then
         return
     end
@@ -50,7 +50,7 @@ function Diffs:loadComparison(request, token)
             GitHubClient.compare,
             GitHubClient,
             request,
-            token
+            self.settings:readSetting("github_api_token")
         )
         UIManager:close(loading_message)
 
@@ -121,11 +121,6 @@ function Diffs:openCompareDialog()
                 text = self.settings:readSetting("last_head_ref") or "",
                 hint = _("Commit, branch, or tag"),
             },
-            {
-                description = _("GitHub API token (optional)"),
-                text = self.settings:readSetting("github_api_token") or "",
-                hint = _("Improves the GitHub API rate limit"),
-            },
         },
         buttons = {
             {
@@ -144,7 +139,6 @@ function Diffs:openCompareDialog()
                         local request, validation_error = CompareRequest.fromFields(
                             fields[1], fields[2], fields[3], fields[4]
                         )
-                        local token = fields[5]:match("^%s*(.-)%s*$")
                         if not request then
                             UIManager:show(InfoMessage:new { text = validation_error })
                             return
@@ -154,10 +148,47 @@ function Diffs:openCompareDialog()
                             :saveSetting("last_repo", request.repo)
                             :saveSetting("last_base_ref", request.base_ref)
                             :saveSetting("last_head_ref", request.head_ref)
-                            :saveSetting("github_api_token", token)
                             :flush()
                         UIManager:close(dialog)
-                        self:loadComparison(request, token)
+                        self:loadComparison(request)
+                    end,
+                },
+            },
+        },
+    }
+    UIManager:show(dialog)
+    dialog:onShowKeyboard()
+end
+
+--- Open the dialog used to configure the GitHub API token.
+function Diffs:openSettingsDialog()
+    local dialog
+    dialog = MultiInputDialog:new {
+        title = _("Diffs settings"),
+        fields = {
+            {
+                description = _("GitHub API token (optional)"),
+                text = self.settings:readSetting("github_api_token") or "",
+                hint = _("Stored only in KOReader's local settings"),
+            },
+        },
+        buttons = {
+            {
+                {
+                    text = _("Cancel"),
+                    id = "close",
+                    callback = function()
+                        UIManager:close(dialog)
+                    end,
+                },
+                {
+                    text = _("Save"),
+                    is_enter_default = true,
+                    callback = function()
+                        local fields = dialog:getFields()
+                        local token = fields[1]:match("^%s*(.-)%s*$")
+                        self.settings:saveSetting("github_api_token", token):flush()
+                        UIManager:close(dialog)
                     end,
                 },
             },
@@ -173,9 +204,20 @@ function Diffs:addToMainMenu(menu_items)
     menu_items.diffs = {
         text = _("Diffs"),
         sorting_hint = "more_tools",
-        callback = function()
-            self:openCompareDialog()
-        end,
+        sub_item_table = {
+            {
+                text = _("Compare"),
+                callback = function()
+                    self:openCompareDialog()
+                end,
+            },
+            {
+                text = _("Settings"),
+                callback = function()
+                    self:openSettingsDialog()
+                end,
+            },
+        },
     }
 end
 
