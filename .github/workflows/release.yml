@@ -46,6 +46,13 @@ jobs:
       - name: Install packaging tools
         run: sudo apt-get update && sudo apt-get install --yes rsync zip
 
+      - name: Prepare release notes
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          RELEASE_VERSION="${RELEASE_TAG#v}"
+          bash scripts/extract-changelog.sh "${RELEASE_VERSION}" > release-notes.md
+
       - name: Create plugin ZIP
         env:
           RELEASE_TAG: ${{ github.ref_name }}
@@ -56,5 +63,6 @@ jobs:
         with:
           files: "*.zip"
           fail_on_unmatched_files: true
-          generate_release_notes: true
+          body_path: release-notes.md
+          generate_release_notes: false
           prerelease: ${{ contains(github.ref_name, '-') }}
