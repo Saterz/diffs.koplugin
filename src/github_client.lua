@@ -50,12 +50,24 @@ function GitHubClient:get(url, headers)
     return table.concat(response_chunks), tonumber(status_code), nil
 end
 
+--- Build headers for an optional GitHub API token.
+-- @tparam string|nil token optional user-provided GitHub API token
+-- @tparam table|nil headers optional request headers to extend
+-- @treturn table request headers
+local function requestHeaders(token, headers)
+    headers = headers or {}
+    if type(token) == "string" and token ~= "" then
+        headers.Authorization = "Bearer " .. token
+    end
+    return headers
+end
+
 --- Download a GitHub comparison and then its unified-diff representation.
 -- @tparam table request normalized request from `CompareRequest.fromFields`
 -- @treturn string|nil unified diff text
 -- @treturn table|nil metadata containing comparison status, commit count, and URL
 -- @treturn string|nil user-facing error
-function GitHubClient:compare(request)
+function GitHubClient:compare(request, token)
     local compare_url = string.format(
         "%s/repos/%s/%s/compare/%s...%s",
         self.api_root,
@@ -65,7 +77,7 @@ function GitHubClient:compare(request)
         encodePathSegment(request.head_ref)
     )
 
-    local response_body, status_code, transport_error = self:get(compare_url)
+    local response_body, status_code, transport_error = self:get(compare_url, requestHeaders(token))
     if transport_error then
         return nil, nil, transport_error
     end
@@ -86,9 +98,9 @@ function GitHubClient:compare(request)
         return nil, nil, "GitHub did not provide a diff URL for this comparison."
     end
 
-    local diff_body, diff_status, diff_error = self:get(comparison.diff_url, {
+    local diff_body, diff_status, diff_error = self:get(comparison.diff_url, requestHeaders(token, {
         Accept = "application/vnd.github.diff",
-    })
+    }))
     if diff_error then
         return nil, nil, diff_error
     end
