@@ -19,7 +19,13 @@ if [[ ! -f CHANGELOG.md ]]; then
     exit 1
 fi
 
-awk -v version="$VERSION" '
+if [[ "$VERSION" == *-* ]]; then
+    CHANGELOG_VERSION="Unreleased"
+else
+    CHANGELOG_VERSION="$VERSION"
+fi
+
+awk -v version="$CHANGELOG_VERSION" '
 BEGIN {
     heading = "## [" version "]"
     found = 0
