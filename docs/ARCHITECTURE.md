@@ -33,7 +33,7 @@ src/diff_view.lua
 
 | Module | Responsibility |
 | --- | --- |
-| `main.lua` | Registers the Tools menu entry, opens the comparison form, manages KOReader UI updates, and persists preferences. |
+| `main.lua` | Registers the Tools submenu, opens the comparison and token settings forms, manages KOReader UI updates, and persists settings. |
 | `compare_request.lua` | Trims and validates repository and revision fields before a request is made. |
 | `github_client.lua` | Calls GitHub's public compare API, decodes comparison metadata, and downloads the unified diff. |
 | `diff_parser.lua` | Parses unified diffs into files, hunks, numbered lines, file metadata, and parser warnings. |
@@ -65,8 +65,8 @@ The comparison form is converted into a normalized request:
 
 ## UI and persistence
 
-- `main.lua` registers the plugin in KOReader's Tools menu.
-- KOReader's `MultiInputDialog` collects the repository owner, repository name, base revision, and head revision.
+- `main.lua` registers the plugin in KOReader's Tools menu with **Compare** and **Settings** submenu entries.
+- KOReader's `MultiInputDialog` collects repository/revision fields for comparisons and the optional GitHub API token from **Settings**.
 - GitHub work is scheduled through KOReader's UI manager after a loading message is displayed.
 - Viewer preferences are stored in KOReader's settings directory in `diffs.lua`.
 - The default layout is combined, and line wrapping is disabled by default.
@@ -75,7 +75,7 @@ The comparison form is converted into a normalized request:
 
 ## Network behavior
 
-The comparison form can include an optional GitHub API token. The plugin sends it as a Bearer token with both requests; it is stored locally in KOReader's `diffs.lua` settings file. Without a token, the plugin uses GitHub's unauthenticated API and supports public repositories only. A comparison involves:
+The plugin settings form can include an optional GitHub API token. The plugin sends it as a Bearer token with both requests; it is stored locally in KOReader's `diffs.lua` settings file. Without a token, the plugin uses GitHub's unauthenticated API and supports public repositories only. A comparison involves:
 
 1. A JSON request to GitHub's compare endpoint.
 2. A second request to the `diff_url` returned by the comparison response.
