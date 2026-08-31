@@ -22,15 +22,14 @@ ZenPM is a package manager for KOReader plugins. It is the recommended way to in
 
 ## Usage
 
-Open **Tools → Diffs**, and enter:
+Open **Tools → Diffs → Compare**, and enter:
 
 1. A repository owner such as `koreader`.
 2. A repository name such as `koreader`.
 3. A base commit, branch, or tag.
 4. A head commit, branch, or tag.
-5. Optionally, a GitHub API token.
 
-The token is sent as a Bearer token with both GitHub requests. It can raise GitHub's API rate limit and allow access to repositories that token may read. The token is stored in KOReader's local `diffs.lua` settings file, so clear the field before sharing the device or its settings backup.
+To configure authentication, open **Tools → Diffs → Settings** and enter an optional GitHub API token. The token is sent as a Bearer token with both GitHub requests. It can raise GitHub's API rate limit and allow access to repositories that token may read. The token is stored in KOReader's local `diffs.lua` settings file, so clear it before sharing the device or its settings backup.
 
 Without a token, the plugin uses GitHub's unauthenticated API and supports public repositories only. GitHub may temporarily reject requests after its anonymous rate limit is reached.
 
