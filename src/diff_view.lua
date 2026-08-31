@@ -13,8 +13,8 @@ local UIManager = require("ui/uimanager")
 local _ = require("gettext")
 
 local Screen = Device.screen
-local HEADER_CONTROL_WIDTH = 48
-local HEADER_ICON_SIZE = 40
+local HEADER_CONTROL_WIDTH = 52
+local HEADER_ICON_SIZE = 32
 
 --- Resolve a KOReader palette constant and fail before painting if it is invalid.
 -- `paintRect` treats nil as black, so silently accepting a misspelled constant
