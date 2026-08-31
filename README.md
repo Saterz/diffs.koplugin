@@ -39,7 +39,9 @@ The workflow checks the codebase, packages the Lua files, and attaches `diffs.ko
 
 ## Development
 
-See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for development setup, testing, packaging, and pull request guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, packaging, and pull request guidelines.
+
+See [Architecture](docs/ARCHITECTURE.md) for an overview of the plugin's modules and runtime flow.
 
 ## Known limitations
 
