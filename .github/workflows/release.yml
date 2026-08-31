@@ -14,6 +14,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Verify beta tag branch
+        if: contains(github.ref_name, '-')
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" "origin/dev"; then
+            echo "Beta release tags must point to a commit reachable from the dev branch." >&2
+            exit 1
+          fi
 
       - name: Install Lua tooling
         run: |
