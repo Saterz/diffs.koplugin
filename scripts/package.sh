@@ -21,6 +21,7 @@ rsync -a \
     --exclude="*" \
     src/ "dist/$PLUGIN_NAME/"
 cp README.md "dist/$PLUGIN_NAME/"
+cp LICENSE "dist/$PLUGIN_NAME/"
 
 sed -i -E \
     "s/^([[:space:]]*version[[:space:]]*=[[:space:]]*)\"[^\"]+\"/\\1\"$PLUGIN_VERSION\"/" \
