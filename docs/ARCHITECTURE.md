@@ -75,7 +75,7 @@ The comparison form is converted into a normalized request:
 
 ## Network behavior
 
-The plugin uses GitHub's unauthenticated API and supports public repositories only. A comparison involves:
+The comparison form can include an optional GitHub API token. The plugin sends it as a Bearer token with both requests; it is stored locally in KOReader's `diffs.lua` settings file. Without a token, the plugin uses GitHub's unauthenticated API and supports public repositories only. A comparison involves:
 
 1. A JSON request to GitHub's compare endpoint.
 2. A second request to the `diff_url` returned by the comparison response.
