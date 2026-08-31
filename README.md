@@ -39,6 +39,8 @@ Releases are created automatically by GitHub Actions when a version tag is pushe
 
 The workflow checks the codebase, packages the Lua files, and attaches `diffs.koplugin.zip` to the GitHub Release. Beta tags must point to a commit reachable from the `dev` branch.
 
+Release notes come from `CHANGELOG.md`, which follows the [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/) format. Stable tags use their matching version section, while beta and other prerelease tags use the `Unreleased` section. Add ongoing changes under `Unreleased` and organize them under the appropriate categories, such as `Added`, `Changed`, `Fixed`, or `Security`.
+
 ## Development
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, packaging, and pull request guidelines.

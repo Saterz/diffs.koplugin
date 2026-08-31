@@ -28,7 +28,7 @@ Development and testing should be performed in an environment that provides the 
 1. Create a focused branch for your change.
 2. Keep changes limited to the relevant behavior.
 3. Update or add tests when changing behavior.
-4. Document relevant user-visible or behavior changes in the `Unreleased` section of `CHANGELOG.md`.
+4. Document relevant user-visible or behavior changes under `## [Unreleased]` in `CHANGELOG.md`, following the [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/) format. Organize entries under the applicable categories, such as `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, or `Security`.
 5. Update documentation when public behavior, installation, or development procedures change.
 
 Avoid unrelated refactoring, formatting changes, or new runtime dependencies unless they are necessary.
@@ -63,6 +63,8 @@ Replace `VERSION` with the version number without the leading `v`.
 
 Before packaging, verify that the archive contains the required plugin files and does not include credentials or unrelated files.
 
+Before creating a stable release tag, move the relevant entries from `## [Unreleased]` into a dated `## [VERSION] - YYYY-MM-DD` section in `CHANGELOG.md`. Beta and other prerelease tags use the `Unreleased` section for their release notes.
+
 ## Pull requests
 
 Pull requests should:
@@ -71,6 +73,6 @@ Pull requests should:
 - Include tests or explain why tests were not practical.
 - Mention any KOReader-version or device-specific assumptions.
 - Keep generated files and release archives out of the pull request unless explicitly required.
-- Update `CHANGELOG.md` when the change is relevant to users.
+- Update `CHANGELOG.md` in its `Unreleased` section when the change is relevant to users, using the appropriate Keep a Changelog category.
 
 Please keep each pull request focused on one feature, fix, or related group of changes.

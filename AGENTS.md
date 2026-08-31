@@ -55,11 +55,13 @@ bash scripts/package.sh VERSION
 
 `VERSION` should not include the leading `v`; the release workflow derives it from the pushed tag. Release tags use the `v*` pattern. Tags containing a hyphen are treated as beta/prerelease tags and must point to a commit reachable from `dev`. Stable releases should be created from the intended stable branch.
 
+`CHANGELOG.md` follows the [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/) format. Add unreleased changes under `## [Unreleased]` and organize them under the applicable categories, such as `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, or `Security`. Before creating a stable release tag, move the relevant entries into a dated `## [VERSION] - YYYY-MM-DD` section. Beta and other prerelease tags use the `Unreleased` section for their release notes.
+
 ## Change checklist
 
 - Confirm the change is limited to the requested behavior.
 - Add regression coverage for changed logic or UI layout where practical.
-- Document relevant user-visible or behavior changes in the `Unreleased` section of `CHANGELOG.md`.
+- Document relevant user-visible or behavior changes in the `Unreleased` section of `CHANGELOG.md`, using the appropriate Keep a Changelog category.
 - Run `bash scripts/check.sh`.
 - Run `git diff --check`.
 - Verify that packaging still includes the required plugin files.
