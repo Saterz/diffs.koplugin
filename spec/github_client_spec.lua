@@ -63,6 +63,28 @@ describe("GitHubClient", function()
         assert.are.equal("application/vnd.github.diff", requests[2].headers.Accept)
     end)
 
+    it("sends an optional token with both GitHub requests", function()
+        local requests = {}
+        client.get = function(_, url, headers)
+            table.insert(requests, { url = url, headers = headers })
+            if #requests == 1 then
+                return "comparison", 200, nil
+            end
+            return "unified diff", 200, nil
+        end
+
+        assert(client:compare({
+            owner = "owner",
+            repo = "repository",
+            base_ref = "base",
+            head_ref = "head",
+        }, "github-token"))
+
+        assert.are.equal("Bearer github-token", requests[1].headers.Authorization)
+        assert.are.equal("Bearer github-token", requests[2].headers.Authorization)
+        assert.are.equal("application/vnd.github.diff", requests[2].headers.Accept)
+    end)
+
     it("returns GitHub's error message", function()
         client.get = function()
             return "failure", 404, nil
