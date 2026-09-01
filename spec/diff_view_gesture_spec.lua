@@ -119,10 +119,10 @@ describe("diff view gestures", function()
             self.toggled_file = target
         end
 
-        view:handleTap({ pos = { x = 20, y = 20 } })
+        view:handleTap({ pos = { x = 20, y = 15 } })
         assert.are.equal(file, view.toggled_file)
 
-        view:handleTap({ pos = { x = 20, y = 30 } })
+        view:handleTap({ pos = { x = 20, y = 25 } })
         assert.are.equal(file, view.toggled_file)
     end)
 
