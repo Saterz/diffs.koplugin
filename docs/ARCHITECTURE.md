@@ -65,10 +65,10 @@ The comparison form is converted into a normalized request:
 
 ## UI and persistence
 
-- `main.lua` registers the plugin in KOReader's Tools menu with **Compare** and **Settings** submenu entries.
-- KOReader's `MultiInputDialog` collects repository/revision fields for comparisons and the optional GitHub API token from **Settings**.
+- `main.lua` registers the plugin in KOReader's Tools menu with **Compare** and nested **Settings → GitHub API key** entries.
+- KOReader's `MultiInputDialog` collects repository/revision fields for comparisons and key input from the GitHub API key screen.
 - GitHub work is scheduled through KOReader's UI manager after a loading message is displayed.
-- Viewer preferences are stored in KOReader's settings directory in `diffs.lua`.
+- General Diffs settings are stored in `Diffs/settings.lua`; the API key is stored in `Diffs/github_api.key`.
 - The default layout is combined, and line wrapping is disabled by default.
 - `diff_view.lua` renders the diff using KOReader's framebuffer and text-rendering APIs.
 - `diff_settings.lua` provides touch-based controls for wrapping and combined/split layout.
