@@ -24,7 +24,7 @@
 - Use descriptive local names and follow the existing Lua style.
 - Handle network and malformed-input failures explicitly; do not assume GitHub responses are always valid.
 - Keep user-visible strings and UI behavior appropriate for KOReader's e-ink display and touch interaction.
-- Do not commit generated release archives or credentials.
+- Do not commit generated release archives or credentials. The runtime API key belongs in KOReader's local `Diffs/github_api.key` file.
 
 ## Testing and checks
 
@@ -64,5 +64,5 @@ bash scripts/package.sh VERSION
 - Document relevant user-visible or behavior changes in the `Unreleased` section of `CHANGELOG.md`, using the appropriate Keep a Changelog category.
 - Run `bash scripts/check.sh`.
 - Run `git diff --check`.
-- Verify that packaging still includes the required plugin files.
+- Verify that packaging still includes the required plugin files and excludes the `Diffs` settings directory.
 - Summarize any KOReader-version or device-specific assumptions.
