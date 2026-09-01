@@ -4,6 +4,8 @@ local DiffParser = require("diff_parser")
 local DiffPreferences = require("diff_preferences")
 local DiffView = require("diff_view")
 local GitHubClient = require("github_client")
+local GithubApiKey = require("github_api_key")
+local lfs = require("lfs")
 local InfoMessage = require("ui/widget/infomessage")
 local LuaSettings = require("luasettings")
 local MultiInputDialog = require("ui/widget/multiinputdialog")
@@ -15,11 +17,64 @@ local _ = require("gettext")
 local Diffs = WidgetContainer:extend {
     name = "diffs",
     is_doc_only = false,
-    settings_file = DataStorage:getSettingsDir() .. "/diffs.lua",
+    settings_dir = DataStorage:getSettingsDir() .. "/Diffs",
+    settings_file = DataStorage:getSettingsDir() .. "/Diffs/settings.lua",
+    legacy_settings_file = DataStorage:getSettingsDir() .. "/diffs.lua",
+    github_api_key_file = DataStorage:getSettingsDir() .. "/Diffs/github_api.key",
 }
 
+local LEGACY_SETTING_KEYS = {
+    "last_owner",
+    "last_repo",
+    "last_base_ref",
+    "last_head_ref",
+    "wrap_lines",
+    "layout_mode",
+    "portrait_mode",
+    "show_scrollbar",
+}
+
+function Diffs:migrateLegacySettings()
+    if not lfs.attributes(self.legacy_settings_file) then
+        return
+    end
+
+    local legacy_settings = LuaSettings:open(self.legacy_settings_file)
+    for _, key in ipairs(LEGACY_SETTING_KEYS) do
+        if self.settings:readSetting(key) == nil then
+            local value = legacy_settings:readSetting(key)
+            if value ~= nil then
+                self.settings:saveSetting(key, value)
+            end
+        end
+    end
+
+    local _, key_file_exists, key_error = GithubApiKey.read(self.github_api_key_file)
+    assert(not key_error, "Unable to read GitHub API key file: " .. tostring(key_error))
+    if not key_file_exists then
+        local legacy_token = legacy_settings:readSetting("github_api_token")
+        if legacy_token ~= nil then
+            local write_ok, write_error = GithubApiKey.write(self.github_api_key_file, legacy_token)
+            assert(write_ok, "Unable to migrate GitHub API key: " .. tostring(write_error))
+        end
+    end
+
+    self.settings:flush()
+    local removed, remove_error = os.remove(self.legacy_settings_file)
+    assert(removed, "Unable to remove legacy settings file: " .. tostring(remove_error))
+end
+
 function Diffs:init()
+    local directory = lfs.attributes(self.settings_dir)
+    if not directory then
+        local created, create_error = lfs.mkdir(self.settings_dir)
+        assert(created, "Unable to create Diffs settings directory: " .. tostring(create_error))
+    elseif directory.mode ~= "directory" then
+        error("Diffs settings path is not a directory: " .. self.settings_dir)
+    end
+
     self.settings = LuaSettings:open(self.settings_file)
+    self:migrateLegacySettings()
     self.preferences = DiffPreferences.load(self.settings)
     self.ui.menu:registerToMainMenu(self)
 end
@@ -46,11 +101,20 @@ function Diffs:loadComparison(request)
     UIManager:show(loading_message)
 
     UIManager:nextTick(function()
+        local token, _, token_error = GithubApiKey.read(self.github_api_key_file)
+        if token_error then
+            UIManager:close(loading_message)
+            UIManager:show(InfoMessage:new {
+                text = _("The GitHub API key could not be read: ") .. tostring(token_error),
+            })
+            return
+        end
+
         local call_ok, diff_text, metadata, comparison_error = pcall(
             GitHubClient.compare,
             GitHubClient,
             request,
-            self.settings:readSetting("github_api_token")
+            token
         )
         UIManager:close(loading_message)
 
@@ -162,14 +226,24 @@ end
 
 --- Open the dialog used to configure the GitHub API token.
 function Diffs:openSettingsDialog()
+    local _, key_file_exists, key_error = GithubApiKey.read(self.github_api_key_file)
+    if key_error then
+        UIManager:show(InfoMessage:new {
+            text = _("The GitHub API key could not be read: ") .. tostring(key_error),
+        })
+        return
+    end
+
     local dialog
     dialog = MultiInputDialog:new {
-        title = _("Diffs settings"),
+        title = _("GitHub API key"),
         fields = {
             {
-                description = _("GitHub API token (optional)"),
-                text = self.settings:readSetting("github_api_token") or "",
-                hint = _("Stored only in KOReader's local settings"),
+                description = _("API key"),
+                text = "",
+                hint = key_file_exists
+                    and _("A key is configured; enter a new key to replace it")
+                    or _("Enter a GitHub API key"),
             },
         },
         buttons = {
@@ -182,12 +256,36 @@ function Diffs:openSettingsDialog()
                     end,
                 },
                 {
+                    text = _("Clear"),
+                    callback = function()
+                        local clear_ok, clear_error = GithubApiKey.clear(self.github_api_key_file)
+                        if not clear_ok then
+                            UIManager:show(InfoMessage:new {
+                                text = _("The GitHub API key could not be cleared: ") .. tostring(clear_error),
+                            })
+                            return
+                        end
+                        UIManager:close(dialog)
+                    end,
+                },
+                {
                     text = _("Save"),
                     is_enter_default = true,
                     callback = function()
                         local fields = dialog:getFields()
                         local token = fields[1]:match("^%s*(.-)%s*$")
-                        self.settings:saveSetting("github_api_token", token):flush()
+                        if token == "" then
+                            UIManager:close(dialog)
+                            return
+                        end
+
+                        local write_ok, write_error = GithubApiKey.write(self.github_api_key_file, token)
+                        if not write_ok then
+                            UIManager:show(InfoMessage:new {
+                                text = _("The GitHub API key could not be saved: ") .. tostring(write_error),
+                            })
+                            return
+                        end
                         UIManager:close(dialog)
                     end,
                 },
@@ -213,9 +311,14 @@ function Diffs:addToMainMenu(menu_items)
             },
             {
                 text = _("Settings"),
-                callback = function()
-                    self:openSettingsDialog()
-                end,
+                sub_item_table = {
+                    {
+                        text = _("GitHub API key"),
+                        callback = function()
+                            self:openSettingsDialog()
+                        end,
+                    },
+                },
             },
         },
     }
