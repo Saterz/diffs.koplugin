@@ -15,6 +15,8 @@ local _ = require("gettext")
 local Screen = Device.screen
 local HEADER_CONTROL_WIDTH = 52
 local HEADER_ICON_SIZE = 32
+local FILE_HEADER_ICON_SIZE = 24
+local FILE_HEADER_ICON_PADDING = 6
 
 --- Resolve a KOReader palette constant and fail before painting if it is invalid.
 -- `paintRect` treats nil as black, so silently accepting a misspelled constant
@@ -195,8 +197,8 @@ function DiffView:init()
     self.line_height = math.ceil(face_height) + 6
     self.baseline_offset = math.floor(face_ascender) + 3
     self.header_height = self.line_height * 2
-    self.combined_rows = DiffLayout.combined(self.patch)
-    self.split_rows = DiffLayout.split(self.patch)
+    self.collapsed_files = {}
+    self:rebuildRows()
     self.line_number_digits = self:findLineNumberDigits()
     self.digit_width = 0
     for digit = 0, 9 do
@@ -252,6 +254,25 @@ function DiffView:init()
             end,
         },
     }
+end
+
+--- Rebuild both logical layouts using the current per-file collapse state.
+function DiffView:rebuildRows()
+    self.combined_rows = DiffLayout.combined(self.patch, self.collapsed_files)
+    self.split_rows = DiffLayout.split(self.patch, self.collapsed_files)
+end
+
+--- Toggle whether a file's body is visible and retain the viewport's progress.
+-- @tparam table file parsed file object
+function DiffView:toggleFileCollapse(file)
+    self.pending_scroll_progress = DiffViewState.scrollProgress(
+        self.scroll_row,
+        self.current_row_count or 0,
+        self.current_visible_count or 0
+    )
+    self.collapsed_files[file] = not self.collapsed_files[file]
+    self:rebuildRows()
+    self:refresh()
 end
 
 --- Persist and apply a viewer preference changed in the settings widget.
@@ -382,6 +403,12 @@ function DiffView:handleTap(gesture)
         return true
     end
     if gesture.pos.y > self.header_height then
+        local row_index = self.scroll_row
+            + math.floor((gesture.pos.y - self.header_height) / self.line_height) + 1
+        local row = self.current_rows and self.current_rows[row_index]
+        if row and row.file and row.file_header then
+            self:toggleFileCollapse(row.file)
+        end
         return true
     end
 
@@ -678,16 +705,24 @@ function DiffView:visualRows(rows, cell_width, code_width)
         1,
         math.floor((cell_width - gutter_width - marker_width - 4) / character_width)
     )
+    local file_metadata_characters = math.max(
+        1,
+        math.floor((code_width - 10 - FILE_HEADER_ICON_SIZE - FILE_HEADER_ICON_PADDING) / character_width)
+    )
     local metadata_characters = math.max(1, math.floor((code_width - 10) / character_width))
+    local collapsed_files = self.collapsed_files or {}
     local visual_rows = {}
     for _, row in ipairs(rows) do
         if row.kind == "file" then
-            local path_chunks = wrapText(filePath(row.file), metadata_characters)
+            local path_chunks = wrapText(filePath(row.file), file_metadata_characters)
             for index, chunk in ipairs(path_chunks) do
                 table.insert(visual_rows, {
                     kind = index == 1 and "file" or "file_continuation",
                     file = row.file,
                     metadata_text = chunk,
+                    file_header = true,
+                    show_collapse_icon = index == 1,
+                    collapsed = collapsed_files[row.file] == true,
                 })
             end
             table.insert(visual_rows, {
@@ -699,6 +734,8 @@ function DiffView:visualRows(rows, cell_width, code_width)
                     row.file.additions,
                     row.file.deletions
                 ),
+                file_header = true,
+                collapsed = collapsed_files[row.file] == true,
             })
         elseif row.kind == "hunk" then
             for index, chunk in ipairs(wrapText(row.hunk.header, metadata_characters)) do
@@ -761,6 +798,13 @@ function DiffView:paintMetadataRow(bb, x, y, width, row)
             PALETTE.foreground,
             row.kind ~= "file_details"
         )
+        if row.show_collapse_icon then
+            local icon_size = Screen:scaleBySize(FILE_HEADER_ICON_SIZE)
+            local icon_x = x + width - icon_size - Screen:scaleBySize(FILE_HEADER_ICON_PADDING)
+            local icon_y = y + math.floor((self.line_height - icon_size) / 2)
+            local icon_file = row.collapsed and "chevron-down.svg" or "chevron-up.svg"
+            DiffIcon.paint(bb, self.plugin_path .. "/assets/" .. icon_file, icon_x, icon_y, icon_size, icon_size)
+        end
     elseif row.kind == "hunk" or row.kind == "hunk_continuation" then
         bb:paintRect(x, y, width, self.line_height, PALETTE.hunk)
         self:drawText(bb, x + 5, y, row.metadata_text or row.hunk.header, width - 10, PALETTE.muted)
@@ -857,6 +901,7 @@ function DiffView:paintTo(bb, x, y)
     end
     self.current_row_count = #rows
     self.current_visible_count = visible_count
+    self.current_rows = rows
     self.content_dimen = Geom:new {
         x = x,
         y = y + self.header_height,

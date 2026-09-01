@@ -42,5 +42,16 @@ index 1111111..2222222 100644
         assert.are.equal(2, rows[4].left.old_line)
         assert.are.equal(2, rows[4].right.new_line)
     end)
-end)
 
+    it("keeps only a file header when that file is collapsed", function()
+        local collapsed_files = { [patch.files[1]] = true }
+
+        local combined_rows = DiffLayout.combined(patch, collapsed_files)
+        local split_rows = DiffLayout.split(patch, collapsed_files)
+
+        assert.are.equal(1, #combined_rows)
+        assert.are.equal("file", combined_rows[1].kind)
+        assert.are.equal(1, #split_rows)
+        assert.are.equal("file", split_rows[1].kind)
+    end)
+end)

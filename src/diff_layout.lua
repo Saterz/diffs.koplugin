@@ -42,28 +42,30 @@ end
 --- Build rows for a combined (unified) viewer.
 -- @tparam table patch parsed patch
 -- @treturn table ordered display rows
-function DiffLayout.combined(patch)
+function DiffLayout.combined(patch, collapsed_files)
     local rows = {}
 
     for _, file in ipairs(patch.files) do
         table.insert(rows, { kind = "file", file = file })
-        if file.binary then
-            table.insert(rows, { kind = "binary", file = file })
-        end
+        if not (collapsed_files and collapsed_files[file]) then
+            if file.binary then
+                table.insert(rows, { kind = "binary", file = file })
+            end
 
-        for _, hunk in ipairs(file.hunks) do
-            table.insert(rows, { kind = "hunk", hunk = hunk })
-            local index = 1
-            while index <= #hunk.lines do
-                if hunk.lines[index].kind == "context" then
-                    table.insert(rows, { kind = "code", line = hunk.lines[index] })
-                    index = index + 1
-                else
-                    local _, _, next_index = collectChangeBlock(hunk.lines, index)
-                    for changed_index = index, next_index - 1 do
-                        table.insert(rows, { kind = "code", line = hunk.lines[changed_index] })
+            for _, hunk in ipairs(file.hunks) do
+                table.insert(rows, { kind = "hunk", hunk = hunk })
+                local index = 1
+                while index <= #hunk.lines do
+                    if hunk.lines[index].kind == "context" then
+                        table.insert(rows, { kind = "code", line = hunk.lines[index] })
+                        index = index + 1
+                    else
+                        local _, _, next_index = collectChangeBlock(hunk.lines, index)
+                        for changed_index = index, next_index - 1 do
+                            table.insert(rows, { kind = "code", line = hunk.lines[changed_index] })
+                        end
+                        index = next_index
                     end
-                    index = next_index
                 end
             end
         end
@@ -75,34 +77,36 @@ end
 --- Build aligned rows for a side-by-side viewer.
 -- @tparam table patch parsed patch
 -- @treturn table ordered rows containing `left` and `right` code lines
-function DiffLayout.split(patch)
+function DiffLayout.split(patch, collapsed_files)
     local rows = {}
 
     for _, file in ipairs(patch.files) do
         table.insert(rows, { kind = "file", file = file })
-        if file.binary then
-            table.insert(rows, { kind = "binary", file = file })
-        end
+        if not (collapsed_files and collapsed_files[file]) then
+            if file.binary then
+                table.insert(rows, { kind = "binary", file = file })
+            end
 
-        for _, hunk in ipairs(file.hunks) do
-            table.insert(rows, { kind = "hunk", hunk = hunk })
-            local index = 1
-            while index <= #hunk.lines do
-                local line = hunk.lines[index]
-                if line.kind == "context" then
-                    table.insert(rows, { kind = "code", left = line, right = line })
-                    index = index + 1
-                else
-                    local deletions, additions, next_index = collectChangeBlock(hunk.lines, index)
-                    local row_count = math.max(#deletions, #additions)
-                    for pair_index = 1, row_count do
-                        table.insert(rows, {
-                            kind = "code",
-                            left = deletions[pair_index],
-                            right = additions[pair_index],
-                        })
+            for _, hunk in ipairs(file.hunks) do
+                table.insert(rows, { kind = "hunk", hunk = hunk })
+                local index = 1
+                while index <= #hunk.lines do
+                    local line = hunk.lines[index]
+                    if line.kind == "context" then
+                        table.insert(rows, { kind = "code", left = line, right = line })
+                        index = index + 1
+                    else
+                        local deletions, additions, next_index = collectChangeBlock(hunk.lines, index)
+                        local row_count = math.max(#deletions, #additions)
+                        for pair_index = 1, row_count do
+                            table.insert(rows, {
+                                kind = "code",
+                                left = deletions[pair_index],
+                                right = additions[pair_index],
+                            })
+                        end
+                        index = next_index
                     end
-                    index = next_index
                 end
             end
         end
@@ -112,4 +116,3 @@ function DiffLayout.split(patch)
 end
 
 return DiffLayout
-

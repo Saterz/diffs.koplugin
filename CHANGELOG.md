@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - A Diffs settings screen for configuring a GitHub API key.
+- Per-file collapse controls in the diff viewer.
 
 ### Changed
 
