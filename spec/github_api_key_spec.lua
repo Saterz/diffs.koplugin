@@ -1,6 +1,4 @@
 local GithubApiKey = require("github_api_key")
-local lfs = require("lfs")
-
 describe("GitHub API key storage", function()
     local path
 
