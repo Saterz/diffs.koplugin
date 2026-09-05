@@ -108,6 +108,24 @@ describe("diff view gestures", function()
         assert.is_true(view.closed)
     end)
 
+    it("toggles a file from any file-header row", function()
+        local view = newView()
+        local file = {}
+        view.current_rows = {
+            { kind = "file", file = file, file_header = true },
+            { kind = "file_details", file = file, file_header = true },
+        }
+        function view:toggleFileCollapse(target)
+            self.toggled_file = target
+        end
+
+        view:handleTap({ pos = { x = 20, y = 15 } })
+        assert.are.equal(file, view.toggled_file)
+
+        view:handleTap({ pos = { x = 20, y = 25 } })
+        assert.are.equal(file, view.toggled_file)
+    end)
+
     it("cleans up a pending drag when the viewer closes", function()
         local view = newView()
         view.scrollbar_dragging = true
