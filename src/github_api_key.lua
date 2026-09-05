@@ -1,4 +1,4 @@
-local lfs = require("lfs")
+local lfs = require("libs/libkoreader-lfs")
 
 local GithubApiKey = {}
 

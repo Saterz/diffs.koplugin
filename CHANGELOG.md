@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Store all Diffs settings in the local `Diffs/` directory and use `github_api.key` as the API key source of truth.
 
+### Fixed
+
+- Load KOReader's bundled LuaFileSystem module so the plugin can start without a standalone `lfs` module.
+
 ## [1.0.0] - 2026-08-30
 
 Initial release
