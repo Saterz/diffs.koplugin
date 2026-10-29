@@ -63,7 +63,7 @@ end
 
 --- Read a hunk count, applying the unified-diff default of one.
 ---@param value string optional numeric count
----@return number parsed count
+---@return number|nil parsed count, or nil for an invalid numeric string
 local function parseCount(value)
     if value == "" then
         return 1
@@ -73,7 +73,7 @@ end
 
 --- Determine a file's status from its parsed metadata.
 ---@param file table parsed file object
----@return string added, deleted, renamed, copied, or modified
+---@return "added"|"deleted"|"renamed"|"copied"|"modified" status
 local function determineStatus(file)
     if file.new_file_mode or file.old_path == nil then
         return "added"

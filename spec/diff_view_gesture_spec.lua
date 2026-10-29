@@ -22,9 +22,9 @@ describe("diff view gestures", function()
             _scrollbar_render = function()
             end,
         }, { __index = DiffView })
-        function view:refresh()
+        rawset(view, "refresh", function(self)
             self.refresh_count = (self.refresh_count or 0) + 1
-        end
+        end)
         return view
     end
 
@@ -89,16 +89,16 @@ describe("diff view gestures", function()
 
     it("places close immediately right of settings in the header", function()
         local view = newView()
-        function view.headerControlWidth()
+        rawset(view, "headerControlWidth", function()
             return 40
-        end
-        function view:onClose()
+        end)
+        rawset(view, "onClose", function(self)
             self.closed = true
             return true
-        end
-        function view:openSettings()
+        end)
+        rawset(view, "openSettings", function(self)
             self.settings_opened = true
-        end
+        end)
 
         view:handleTap({ pos = { x = 125, y = 5 } })
         assert.is_true(view.settings_opened)

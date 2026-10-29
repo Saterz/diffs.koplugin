@@ -226,7 +226,7 @@ end
 
 --- Open the dialog used to configure the GitHub API token.
 function Diffs:openSettingsDialog()
-    local _, key_file_exists, key_error = GithubApiKey.read(self.github_api_key_file)
+    local key_file_exists, key_error = select(2, GithubApiKey.read(self.github_api_key_file))
     if key_error then
         UIManager:show(InfoMessage:new {
             text = _("The GitHub API key could not be read: ") .. tostring(key_error),

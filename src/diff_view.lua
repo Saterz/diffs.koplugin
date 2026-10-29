@@ -12,6 +12,10 @@ local RenderText = require("ui/rendertext")
 local UIManager = require("ui/uimanager")
 local _ = require("gettext")
 
+--- Drawing interface used by the viewer for KOReader's FFI-backed BlitBuffer.
+---@class DiffViewBlitBuffer
+---@field paintRect fun(self: DiffViewBlitBuffer, x: number, y: number, w: number, h: number, color: userdata)
+
 local Screen = Device.screen
 local HEADER_CONTROL_WIDTH = 52
 local HEADER_ICON_SIZE = 32
@@ -164,10 +168,11 @@ local function characterCount(text)
 end
 
 --- Copy a line for a wrapped continuation without mutating the parsed patch.
----@param line table source parsed line
+---@param line table|nil source parsed line, or nil for an empty split cell
 ---@param content string wrapped content
 ---@param continuation boolean whether this is not the first visual fragment
----@return table visual line
+---@param content_start number|nil zero-based character offset of the fragment
+---@return table|nil visual line, or nil for an empty split cell
 local function visualLine(line, content, continuation, content_start)
     if not line then
         return nil
@@ -308,6 +313,8 @@ end
 ---@param side string|nil split side, or nil for combined mode
 ---@return number gutter width through its separator
 ---@return number marker column width
+---@return number number column width
+---@return number number column padding
 function DiffView:codeColumnWidths(side)
     local number_columns = side and 1 or 2
     local padding = math.max(4, Screen:scaleBySize(4))
@@ -400,6 +407,9 @@ end
 --- artifact when the user scrubs a long distance on an e-ink panel.
 function DiffView:paintDragThumb(y)
     local scrollbar = self.scrollbar
+    if not scrollbar then
+        return
+    end
     local thumb_y = DiffScrollbar.thumbAtY(scrollbar, y)
     if not thumb_y or thumb_y == scrollbar.thumb_y then
         return
@@ -521,7 +531,7 @@ function DiffView:measureCode(text)
 end
 
 --- Render text directly to the destination buffer.
----@param bb userdata destination BlitBuffer
+---@param bb DiffViewBlitBuffer destination BlitBuffer
 ---@param x number left position
 ---@param y number row top position
 ---@param text string text to render
@@ -562,7 +572,7 @@ function DiffView:fitText(text, width)
 end
 
 --- Paint the emphasized character range for a changed line.
----@param bb userdata destination BlitBuffer
+---@param bb DiffViewBlitBuffer destination BlitBuffer
 ---@param content_x number unscrolled content start
 ---@param y number row top
 ---@param cell_right number clipping boundary
@@ -605,7 +615,7 @@ function DiffView:paintIntraline(bb, content_x, y, cell_right, line)
 end
 
 --- Paint one code cell, including gutter, background, and intraline emphasis.
----@param bb userdata destination BlitBuffer
+---@param bb DiffViewBlitBuffer destination BlitBuffer
 ---@param x number cell left
 ---@param y number row top
 ---@param width number cell width
@@ -744,7 +754,7 @@ function DiffView:visualRows(rows, cell_width, code_width)
 end
 
 --- Paint one file, hunk, or binary-information row.
----@param bb userdata destination BlitBuffer
+---@param bb DiffViewBlitBuffer destination BlitBuffer
 ---@param x number left position
 ---@param y number row top
 ---@param width number row width
@@ -771,7 +781,7 @@ function DiffView:paintMetadataRow(bb, x, y, width, row)
 end
 
 --- Paint the complete full-screen diff directly to a BlitBuffer.
----@param bb userdata destination BlitBuffer
+---@param bb DiffViewBlitBuffer destination BlitBuffer
 ---@param x number left screen position
 ---@param y number top screen position
 function DiffView:paintTo(bb, x, y)

@@ -23,6 +23,8 @@ The repository is organized as follows:
 
 Development and testing should be performed in an environment that provides the KOReader Lua APIs, or with suitable test doubles where possible.
 
+Lua Language Server reads `.luarc.json` for the LuaJIT runtime and the editor-only Busted definitions in `.luals/`. These definitions describe the test globals and assertions; they are not runtime dependencies and are not included in release archives.
+
 ## Making changes
 
 1. Create a focused branch for your change.
