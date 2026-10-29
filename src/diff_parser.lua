@@ -1,8 +1,8 @@
 local DiffParser = {}
 
 --- Split text into logical lines without returning a sentinel trailing line.
--- @tparam string text text using LF or CRLF line endings
--- @treturn table array of strings without their line terminators
+---@param text string text using LF or CRLF line endings
+---@return table array of strings without their line terminators
 local function splitLines(text)
     local normalized = text:gsub("\r\n", "\n")
     local lines = {}
@@ -22,9 +22,9 @@ local function splitLines(text)
 end
 
 --- Decode the common quoting used for paths in Git diff headers.
--- This deliberately leaves uncommon escape sequences intact instead of losing data.
--- @tparam string path raw Git path
--- @treturn string decoded path
+--- This deliberately leaves uncommon escape sequences intact instead of losing data.
+---@param path string raw Git path
+---@return string decoded path
 local function decodePath(path)
     if path:sub(1, 1) == '"' and path:sub(-1) == '"' then
         path = path:sub(2, -2)
@@ -38,8 +38,8 @@ local function decodePath(path)
 end
 
 --- Remove Git's `a/` or `b/` comparison prefixes.
--- @tparam string|nil path raw comparison path
--- @treturn string|nil normalized repository path
+---@param path string|nil raw comparison path
+---@return string|nil normalized repository path
 local function normalizePath(path)
     if not path or path == "/dev/null" then
         return nil
@@ -49,9 +49,9 @@ local function normalizePath(path)
 end
 
 --- Parse the two paths from a `diff --git` line.
--- @tparam string line full header line
--- @treturn string|nil old path
--- @treturn string|nil new path
+---@param line string full header line
+---@return string|nil old path
+---@return string|nil new path
 local function parseDiffPaths(line)
     local payload = line:sub(#"diff --git " + 1)
     local old_path, new_path = payload:match('^(".-")%s+(".-")$')
@@ -62,8 +62,8 @@ local function parseDiffPaths(line)
 end
 
 --- Read a hunk count, applying the unified-diff default of one.
--- @tparam string value optional numeric count
--- @treturn number parsed count
+---@param value string optional numeric count
+---@return number parsed count
 local function parseCount(value)
     if value == "" then
         return 1
@@ -72,8 +72,8 @@ local function parseCount(value)
 end
 
 --- Determine a file's status from its parsed metadata.
--- @tparam table file parsed file object
--- @treturn string added, deleted, renamed, copied, or modified
+---@param file table parsed file object
+---@return string added, deleted, renamed, copied, or modified
 local function determineStatus(file)
     if file.new_file_mode or file.old_path == nil then
         return "added"
@@ -88,8 +88,8 @@ local function determineStatus(file)
 end
 
 --- Validate line totals after parsing a hunk.
--- @tparam table hunk parsed hunk
--- @tparam table warnings mutable warning array
+---@param hunk table parsed hunk
+---@param warnings table mutable warning array
 local function validateHunk(hunk, warnings)
     if not hunk then
         return
@@ -121,9 +121,9 @@ local function validateHunk(hunk, warnings)
 end
 
 --- Parse a unified Git diff into files, hunks, and numbered lines.
--- Unknown file headers are retained in `headers_raw` and `unknown_headers`.
--- @tparam string diff_text unified diff returned by GitHub
--- @treturn table patch with `files` and `warnings` arrays
+--- Unknown file headers are retained in `headers_raw` and `unknown_headers`.
+---@param diff_text string unified diff returned by GitHub
+---@return table patch with `files` and `warnings` arrays
 function DiffParser.parse(diff_text)
     assert(type(diff_text) == "string", "diff_text must be a string")
 

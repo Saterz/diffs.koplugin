@@ -7,10 +7,10 @@ local function trim(value)
 end
 
 --- Read the API key file.
--- @tparam string path API key file path
--- @treturn string|nil trimmed key, or nil when the file is empty
--- @treturn boolean whether the file exists
--- @treturn string|nil read error
+---@param path string API key file path
+---@return string|nil trimmed key, or nil when the file is empty
+---@return boolean whether the file exists
+---@return string|nil read error
 function GithubApiKey.read(path)
     if not lfs.attributes(path) then
         return nil, false, nil
@@ -27,10 +27,10 @@ function GithubApiKey.read(path)
 end
 
 --- Atomically write the API key file.
--- @tparam string path API key file path
--- @tparam string key API key content
--- @treturn boolean success
--- @treturn string|nil write error
+---@param path string API key file path
+---@param key string API key content
+---@return boolean success
+---@return string|nil write error
 function GithubApiKey.write(path, key)
     if type(key) ~= "string" then
         return false, "GitHub API key must be a string."
@@ -67,9 +67,9 @@ function GithubApiKey.write(path, key)
 end
 
 --- Remove the API key file.
--- @tparam string path API key file path
--- @treturn boolean success
--- @treturn string|nil deletion error
+---@param path string API key file path
+---@return boolean success
+---@return string|nil deletion error
 function GithubApiKey.clear(path)
     if not lfs.attributes(path) then
         return true, nil

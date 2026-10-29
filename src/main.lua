@@ -86,7 +86,7 @@ function Diffs:savePreference(key, value)
 end
 
 --- Download, parse, and display a validated comparison.
--- @tparam table request normalized comparison request
+---@param request table normalized comparison request
 function Diffs:loadComparison(request)
     if NetworkMgr:willRerunWhenOnline(function()
         self:loadComparison(request)
@@ -297,7 +297,7 @@ function Diffs:openSettingsDialog()
 end
 
 --- Add the plugin entry to KOReader's Tools menu.
--- @tparam table menu_items mutable KOReader menu registry
+---@param menu_items table mutable KOReader menu registry
 function Diffs:addToMainMenu(menu_items)
     menu_items.diffs = {
         text = _("Diffs"),

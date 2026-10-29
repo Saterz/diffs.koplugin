@@ -5,8 +5,8 @@ local function validLayout(value)
 end
 
 --- Load viewer preferences and migrate obsolete orientation/scrollbar keys.
--- @tparam table settings KOReader LuaSettings-compatible object
--- @treturn table normalized viewer preferences
+---@param settings table KOReader LuaSettings-compatible object
+---@return table normalized viewer preferences
 function DiffPreferences.load(settings)
     local stored_layout = settings:readSetting("layout_mode")
     local previous_layout = settings:readSetting("portrait_mode")

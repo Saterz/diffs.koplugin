@@ -5,8 +5,8 @@ local function clamp(value, minimum, maximum)
 end
 
 --- Calculate fixed-width number columns with padding on both sides.
--- @tparam number digit_width width of the widest rendered digit
--- @tparam number digit_count digits in the largest line number
+---@param digit_width number width of the widest rendered digit
+---@tparam number digit_count digits in the largest line number
 -- @tparam number column_count one for split mode, two for combined mode
 -- @tparam number padding horizontal padding around a number
 -- @treturn table number and gutter widths

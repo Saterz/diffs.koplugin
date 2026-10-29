@@ -17,8 +17,8 @@ local HEADER_CONTROL_WIDTH = 52
 local HEADER_ICON_SIZE = 32
 
 --- Resolve a KOReader palette constant and fail before painting if it is invalid.
--- `paintRect` treats nil as black, so silently accepting a misspelled constant
--- would make text unreadable on the device.
+--- `paintRect` treats nil as black, so silently accepting a misspelled constant
+--- would make text unreadable on the device.
 local function requiredColor(name)
     local color = Blitbuffer[name]
     assert(color, "Unknown KOReader Blitbuffer color: " .. name)
@@ -48,8 +48,8 @@ local PALETTE = {
 DiffView._palette = PALETTE
 
 --- Return the path that best identifies a parsed file.
--- @tparam table file parsed file
--- @treturn string display path
+---@param file table parsed file
+---@return string display path
 local function filePath(file)
     if file.old_path and file.new_path and file.old_path ~= file.new_path then
         return file.old_path .. " → " .. file.new_path
@@ -58,9 +58,9 @@ local function filePath(file)
 end
 
 --- Split UTF-8 text into chunks with at most `max_characters` characters.
--- @tparam string text source text
--- @tparam number max_characters positive maximum per chunk
--- @treturn table chunk array
+---@param text string source text
+---@param max_characters number positive maximum per chunk
+---@return table chunk array
 local function wrapText(text, max_characters)
     if max_characters <= 0 then
         return { text }
@@ -96,9 +96,9 @@ local function wrapText(text, max_characters)
 end
 
 --- Remove the first `count` UTF-8 characters from text.
--- @tparam string text source text
--- @tparam number count number of characters to discard
--- @treturn string remaining text
+---@param text string source text
+---@param count number number of characters to discard
+---@return string remaining text
 local function dropCharacters(text, count)
     local position = 1
     local discarded = 0
@@ -119,9 +119,9 @@ local function dropCharacters(text, count)
 end
 
 --- Return the first `count` UTF-8 characters from text.
--- @tparam string text source text
--- @tparam number count number of characters to retain
--- @treturn string retained prefix
+---@param text string source text
+---@param count number number of characters to retain
+---@return string retained prefix
 local function takeCharacters(text, count)
     local position = 1
     local retained = 0
@@ -142,8 +142,8 @@ local function takeCharacters(text, count)
 end
 
 --- Count UTF-8 characters in a string.
--- @tparam string text UTF-8 text
--- @treturn number character count
+---@param text string UTF-8 text
+---@return number character count
 local function characterCount(text)
     local count = 0
     local position = 1
@@ -164,10 +164,10 @@ local function characterCount(text)
 end
 
 --- Copy a line for a wrapped continuation without mutating the parsed patch.
--- @tparam table line source parsed line
--- @tparam string content wrapped content
--- @tparam boolean continuation whether this is not the first visual fragment
--- @treturn table visual line
+---@param line table source parsed line
+---@param content string wrapped content
+---@param continuation boolean whether this is not the first visual fragment
+---@return table visual line
 local function visualLine(line, content, continuation, content_start)
     if not line then
         return nil
@@ -290,8 +290,8 @@ function DiffView:openSettings()
 end
 
 --- Find the number of digits needed by the largest source line number.
--- A fixed width prevents the gutter from shifting as the diff is scrolled.
--- @treturn number positive digit count
+--- A fixed width prevents the gutter from shifting as the diff is scrolled.
+---@return number positive digit count
 function DiffView:findLineNumberDigits()
     local largest = 1
     for _, file in ipairs(self.patch.files) do
@@ -305,9 +305,9 @@ function DiffView:findLineNumberDigits()
 end
 
 --- Return pixel widths for the line-number and change-marker columns.
--- @tparam string|nil side split side, or nil for combined mode
--- @treturn number gutter width through its separator
--- @treturn number marker column width
+---@param side string|nil split side, or nil for combined mode
+---@return number gutter width through its separator
+---@return number marker column width
 function DiffView:codeColumnWidths(side)
     local number_columns = side and 1 or 2
     local padding = math.max(4, Screen:scaleBySize(4))
@@ -322,7 +322,7 @@ function DiffView:codeColumnWidths(side)
 end
 
 --- Return the full-screen size requested by this view.
--- @treturn table geometry containing width and height
+---@return table geometry containing width and height
 function DiffView:getSize()
     return self.dimen
 end
@@ -339,8 +339,8 @@ function DiffView:refresh()
 end
 
 --- Return the fixed-width title-bar button target.
--- The control size deliberately follows the current visual design rather than
--- the header height, so future header changes do not resize the icons.
+--- The control size deliberately follows the current visual design rather than
+--- the header height, so future header changes do not resize the icons.
 function DiffView.headerControlWidth()
     return Screen:scaleBySize(HEADER_CONTROL_WIDTH)
 end
@@ -360,7 +360,7 @@ function DiffView:paintHeaderIcon(bb, file, x, y, width, height)
 end
 
 --- Close the viewer.
--- @treturn boolean true because the event was handled
+---@return boolean true because the event was handled
 function DiffView:onClose()
     UIManager:close(self)
     return true
@@ -372,9 +372,9 @@ function DiffView:onCloseWidget()
 end
 
 --- Handle taps in the custom title bar.
--- Settings and close are grouped at the right edge, in that order.
--- @tparam table gesture KOReader tap gesture with a `pos` point
--- @treturn boolean true when handled
+--- Settings and close are grouped at the right edge, in that order.
+---@param gesture table KOReader tap gesture with a `pos` point
+---@return boolean true when handled
 function DiffView:handleTap(gesture)
     if DiffScrollbar.contains(self.scrollbar, gesture.pos.x, gesture.pos.y) then
         self.scroll_row = DiffScrollbar.rowAtY(self.scrollbar, gesture.pos.y)
@@ -396,8 +396,8 @@ function DiffView:handleTap(gesture)
 end
 
 --- Draw only the moving scrollbar thumb to the physical screen buffer.
--- Updating the old and new footprints separately avoids a tall black refresh
--- artifact when the user scrubs a long distance on an e-ink panel.
+--- Updating the old and new footprints separately avoids a tall black refresh
+--- artifact when the user scrubs a long distance on an e-ink panel.
 function DiffView:paintDragThumb(y)
     local scrollbar = self.scrollbar
     local thumb_y = DiffScrollbar.thumbAtY(scrollbar, y)
@@ -465,9 +465,9 @@ function DiffView:handlePan(gesture)
 end
 
 --- Finalize a scrollbar scrub and cancel its delayed content repaint.
--- @tparam number|nil y optional final absolute screen position
--- @tparam boolean|nil repaint whether to repaint after cleanup; defaults to true
--- @treturn boolean whether a drag was active
+---@param y number|nil optional final absolute screen position
+---@param repaint boolean|nil whether to repaint after cleanup; defaults to true
+---@return boolean whether a drag was active
 function DiffView:finishScrollbarDrag(y, repaint)
     local was_dragging = self.scrollbar_dragging == true
     self.scrollbar_dragging = false
@@ -491,8 +491,8 @@ function DiffView:handlePanRelease(gesture)
 end
 
 --- Handle page and horizontal navigation gestures.
--- @tparam table gesture KOReader swipe gesture with a direction string
--- @treturn boolean true when handled
+---@param gesture table KOReader swipe gesture with a direction string
+---@return boolean true when handled
 function DiffView:handleSwipe(gesture)
     if self.scrollbar_dragging then
         local end_y = gesture.end_pos and gesture.end_pos.y
@@ -514,20 +514,20 @@ function DiffView:handleSwipe(gesture)
 end
 
 --- Measure one string in the code face.
--- @tparam string text text to measure
--- @treturn number width in pixels
+---@param text string text to measure
+---@return number width in pixels
 function DiffView:measureCode(text)
     return RenderText:sizeUtf8Text(0, nil, self.code_face, text, false, false).x
 end
 
 --- Render text directly to the destination buffer.
--- @tparam userdata bb destination BlitBuffer
--- @tparam number x left position
--- @tparam number y row top position
--- @tparam string text text to render
--- @tparam number width clipping width
--- @tparam userdata|nil color optional foreground color
--- @tparam boolean|nil bold optional bold style
+---@param bb userdata destination BlitBuffer
+---@param x number left position
+---@param y number row top position
+---@param text string text to render
+---@param width number clipping width
+---@param color userdata|nil optional foreground color
+---@param bold boolean|nil optional bold style
 function DiffView:drawText(bb, x, y, text, width, color, bold)
     if width <= 0 then
         return
@@ -562,11 +562,11 @@ function DiffView:fitText(text, width)
 end
 
 --- Paint the emphasized character range for a changed line.
--- @tparam userdata bb destination BlitBuffer
--- @tparam number content_x unscrolled content start
--- @tparam number y row top
--- @tparam number cell_right clipping boundary
--- @tparam table line parsed line containing intraline segments
+---@param bb userdata destination BlitBuffer
+---@param content_x number unscrolled content start
+---@param y number row top
+---@param cell_right number clipping boundary
+---@param line table parsed line containing intraline segments
 function DiffView:paintIntraline(bb, content_x, y, cell_right, line)
     if not line.intraline or line.intraline.changed == "" then
         return
@@ -605,12 +605,12 @@ function DiffView:paintIntraline(bb, content_x, y, cell_right, line)
 end
 
 --- Paint one code cell, including gutter, background, and intraline emphasis.
--- @tparam userdata bb destination BlitBuffer
--- @tparam number x cell left
--- @tparam number y row top
--- @tparam number width cell width
--- @tparam table|nil line visual line, or nil for an empty split cell
--- @tparam string|nil side `left` or `right` in split mode; nil in combined mode
+---@param bb userdata destination BlitBuffer
+---@param x number cell left
+---@param y number row top
+---@param width number cell width
+---@param line table|nil visual line, or nil for an empty split cell
+---@param side string|nil `left` or `right` in split mode; nil in combined mode
 function DiffView:paintCodeCell(bb, x, y, width, line, side)
     bb:paintRect(x, y, width, self.line_height, PALETTE.background)
     if not line then
@@ -667,10 +667,10 @@ function DiffView:paintCodeCell(bb, x, y, width, line, side)
 end
 
 --- Expand code rows into wrapped visual rows when wrapping is enabled.
--- @tparam table rows logical combined or split rows
--- @tparam number cell_width available code-cell width
--- @tparam number code_width complete width excluding the scrollbar gutter
--- @treturn table visual row array
+---@param rows table logical combined or split rows
+---@param cell_width number available code-cell width
+---@param code_width number complete width excluding the scrollbar gutter
+---@return table visual row array
 function DiffView:visualRows(rows, cell_width, code_width)
     local gutter_width, marker_width = self:codeColumnWidths(self.mode == "split" and "left" or nil)
     local character_width = math.max(1, self:measureCode("M"))
@@ -744,11 +744,11 @@ function DiffView:visualRows(rows, cell_width, code_width)
 end
 
 --- Paint one file, hunk, or binary-information row.
--- @tparam userdata bb destination BlitBuffer
--- @tparam number x left position
--- @tparam number y row top
--- @tparam number width row width
--- @tparam table row logical row
+---@param bb userdata destination BlitBuffer
+---@param x number left position
+---@param y number row top
+---@param width number row width
+---@param row table logical row
 function DiffView:paintMetadataRow(bb, x, y, width, row)
     if row.kind == "file" or row.kind == "file_continuation" or row.kind == "file_details" then
         bb:paintRect(x, y, width, self.line_height, PALETTE.header)
@@ -771,9 +771,9 @@ function DiffView:paintMetadataRow(bb, x, y, width, row)
 end
 
 --- Paint the complete full-screen diff directly to a BlitBuffer.
--- @tparam userdata bb destination BlitBuffer
--- @tparam number x left screen position
--- @tparam number y top screen position
+---@param bb userdata destination BlitBuffer
+---@param x number left screen position
+---@param y number top screen position
 function DiffView:paintTo(bb, x, y)
     local width = Screen:getWidth()
     local height = Screen:getHeight()

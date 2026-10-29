@@ -8,8 +8,8 @@ local GitHubClient = {
 }
 
 --- Percent-encode a value for use as one URL path segment.
--- @tparam string value unescaped value
--- @treturn string percent-encoded value
+---@param value string unescaped value
+---@return string percent-encoded value
 local function encodePathSegment(value)
     return (value:gsub("([^A-Za-z0-9%-._~])", function(character)
         return string.format("%%%02X", string.byte(character))
@@ -17,11 +17,11 @@ local function encodePathSegment(value)
 end
 
 --- Perform an HTTP GET and collect its response body.
--- @tparam string url absolute request URL
--- @tparam table|nil headers optional string-to-string request headers
--- @treturn string|nil response body
--- @treturn number|nil HTTP status code
--- @treturn string|nil transport error
+---@param url string absolute request URL
+---@param headers table|nil optional string-to-string request headers
+---@return string|nil response body
+---@return number|nil HTTP status code
+---@return string|nil transport error
 function GitHubClient:get(url, headers)
     local response_chunks = {}
     local request = {
@@ -51,9 +51,9 @@ function GitHubClient:get(url, headers)
 end
 
 --- Build headers for an optional GitHub API token.
--- @tparam string|nil token optional user-provided GitHub API token
--- @tparam table|nil headers optional request headers to extend
--- @treturn table request headers
+---@param token string|nil optional user-provided GitHub API token
+---@param headers table|nil optional request headers to extend
+---@return table request headers
 local function requestHeaders(token, headers)
     headers = headers or {}
     if type(token) == "string" and token ~= "" then
@@ -63,10 +63,10 @@ local function requestHeaders(token, headers)
 end
 
 --- Download a GitHub comparison and then its unified-diff representation.
--- @tparam table request normalized request from `CompareRequest.fromFields`
--- @treturn string|nil unified diff text
--- @treturn table|nil metadata containing comparison status, commit count, and URL
--- @treturn string|nil user-facing error
+---@param request table normalized request from `CompareRequest.fromFields`
+---@return string|nil unified diff text
+---@return table|nil metadata containing comparison status, commit count, and URL
+---@return string|nil user-facing error
 function GitHubClient:compare(request, token)
     local compare_url = string.format(
         "%s/repos/%s/%s/compare/%s...%s",

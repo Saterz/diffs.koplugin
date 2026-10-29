@@ -5,8 +5,8 @@ local function clamp(value, minimum, maximum)
 end
 
 --- Return the width reserved exclusively for the scrollbar and its touch area.
--- @tparam function|nil scale optional pixel scaling function
--- @treturn number gutter width in pixels
+---@param scale function|nil optional pixel scaling function
+---@return number gutter width in pixels
 function DiffScrollbar.gutterWidth(scale)
     scale = scale or function(value)
         return value
@@ -15,12 +15,12 @@ function DiffScrollbar.gutterWidth(scale)
 end
 
 --- Calculate a row-based scrollbar with an enlarged touch target.
--- @tparam table bounds content rectangle (`x`, `y`, `w`, `h`)
--- @tparam number total_rows total number of visual rows
--- @tparam number visible_rows number of rows that fit in the viewport
--- @tparam number scroll_row current zero-based first row
--- @tparam function|nil scale optional pixel scaling function
--- @treturn table|nil scrollbar geometry, or nil when no scrolling is needed
+---@param bounds table content rectangle (`x`, `y`, `w`, `h`)
+---@param total_rows number total number of visual rows
+---@param visible_rows number number of rows that fit in the viewport
+---@param scroll_row number current zero-based first row
+---@param scale function|nil optional pixel scaling function
+---@return table|nil scrollbar geometry, or nil when no scrolling is needed
 function DiffScrollbar.calculate(bounds, total_rows, visible_rows, scroll_row, scale)
     if visible_rows <= 0 or bounds.h <= 0 then
         return nil

@@ -3,8 +3,8 @@ local Intraline = require("intraline")
 local DiffLayout = {}
 
 --- Add intraline segments to corresponding deletion/addition lines.
--- @tparam table deletions ordered deletion lines
--- @tparam table additions ordered addition lines
+---@param deletions table ordered deletion lines
+---@param additions table ordered addition lines
 local function pairChangedLines(deletions, additions)
     local paired_count = math.min(#deletions, #additions)
     for index = 1, paired_count do
@@ -16,11 +16,11 @@ local function pairChangedLines(deletions, additions)
 end
 
 --- Extract one consecutive block of deleted and added lines.
--- @tparam table lines hunk line array
--- @tparam number start_index first changed line
--- @treturn table deletions
--- @treturn table additions
--- @treturn number next unconsumed index
+---@param lines table hunk line array
+---@param start_index number first changed line
+---@return table deletions
+---@return table additions
+---@return number next unconsumed index
 local function collectChangeBlock(lines, start_index)
     local deletions = {}
     local additions = {}
@@ -40,8 +40,8 @@ local function collectChangeBlock(lines, start_index)
 end
 
 --- Build rows for a combined (unified) viewer.
--- @tparam table patch parsed patch
--- @treturn table ordered display rows
+---@param patch table parsed patch
+---@return table ordered display rows
 function DiffLayout.combined(patch)
     local rows = {}
 
@@ -73,8 +73,8 @@ function DiffLayout.combined(patch)
 end
 
 --- Build aligned rows for a side-by-side viewer.
--- @tparam table patch parsed patch
--- @treturn table ordered rows containing `left` and `right` code lines
+---@param patch table parsed patch
+---@return table ordered rows containing `left` and `right` code lines
 function DiffLayout.split(patch)
     local rows = {}
 

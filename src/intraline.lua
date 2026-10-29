@@ -1,9 +1,9 @@
 local Intraline = {}
 
 --- Split UTF-8 text into character-sized byte strings.
--- Invalid leading bytes are retained as individual characters.
--- @tparam string text UTF-8 text
--- @treturn table array of character strings
+--- Invalid leading bytes are retained as individual characters.
+---@param text string UTF-8 text
+---@return table array of character strings
 local function toCharacters(text)
     local characters = {}
     local position = 1
@@ -26,10 +26,10 @@ local function toCharacters(text)
 end
 
 --- Join a character range, returning an empty string for an empty range.
--- @tparam table characters character array
--- @tparam number first_index inclusive first index
--- @tparam number last_index inclusive last index
--- @treturn string joined range
+---@param characters table character array
+---@param first_index number inclusive first index
+---@param last_index number inclusive last index
+---@return string joined range
 local function joinRange(characters, first_index, last_index)
     if first_index > last_index then
         return ""
@@ -43,11 +43,11 @@ local function joinRange(characters, first_index, last_index)
 end
 
 --- Find the changed character ranges in a deletion/addition pair.
--- The result keeps the shared prefix and suffix outside the emphasized range.
--- @tparam string old_text deleted line content
--- @tparam string new_text added line content
--- @treturn table old segments with `prefix`, `changed`, and `suffix`
--- @treturn table new segments with `prefix`, `changed`, and `suffix`
+--- The result keeps the shared prefix and suffix outside the emphasized range.
+---@param old_text string deleted line content
+---@param new_text string added line content
+---@return table old segments with `prefix`, `changed`, and `suffix`
+---@return table new segments with `prefix`, `changed`, and `suffix`
 function Intraline.diff(old_text, new_text)
     local old_characters = toCharacters(old_text)
     local new_characters = toCharacters(new_text)

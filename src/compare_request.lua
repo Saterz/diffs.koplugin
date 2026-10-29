@@ -1,19 +1,19 @@
 local CompareRequest = {}
 
 --- Remove whitespace from both ends of a string.
--- @tparam string value input string
--- @treturn string trimmed string
+---@param value string input string
+---@return string trimmed string
 local function trim(value)
     return (value:gsub("^%s+", ""):gsub("%s+$", ""))
 end
 
 --- Validate and normalize the user's comparison fields.
--- @tparam string owner GitHub account or organization name
--- @tparam string repo repository name
--- @tparam string base_ref base commit SHA, branch, or tag
--- @tparam string head_ref head commit SHA, branch, or tag
--- @treturn table|nil normalized request with `owner`, `repo`, `base_ref`, and `head_ref`
--- @treturn string|nil validation error
+---@param owner string GitHub account or organization name
+---@param repo string repository name
+---@param base_ref string base commit SHA, branch, or tag
+---@param head_ref string head commit SHA, branch, or tag
+---@return table|nil normalized request with `owner`, `repo`, `base_ref`, and `head_ref`
+---@return string|nil validation error
 function CompareRequest.fromFields(owner, repo, base_ref, head_ref)
     owner = type(owner) == "string" and trim(owner) or ""
     repo = type(repo) == "string" and trim(repo):gsub("%.git$", "") or ""
