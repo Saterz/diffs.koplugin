@@ -104,7 +104,11 @@ function Diffs:loadComparison(request)
     UIManager:show(loading_message)
 
     UIManager:nextTick(function()
-        local token, _, token_error = GithubApiKey.read(self.github_api_key_file)
+        local token, token_error
+        do
+            local _ -- Scope the discarded existence flag away from gettext below.
+            token, _, token_error = GithubApiKey.read(self.github_api_key_file)
+        end
         if token_error then
             UIManager:close(loading_message)
             UIManager:show(InfoMessage:new {

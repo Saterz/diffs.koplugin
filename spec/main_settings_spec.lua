@@ -5,6 +5,7 @@ describe("main settings dialog", function()
     local shown
     local closed
     local api_key
+    local pending
 
     local function translated(text)
         return "translated: " .. text
@@ -14,6 +15,7 @@ describe("main settings dialog", function()
         read_result = { exists = false }
         shown = {}
         closed = {}
+        pending = {}
         api_key = {
             read = function(path)
                 assert.are.equal("/settings/Diffs/github_api.key", path)
@@ -51,8 +53,13 @@ describe("main settings dialog", function()
                     return options
                 end,
             },
-            ["ui/network/manager"] = {},
+            ["ui/network/manager"] = {
+                willRerunWhenOnline = function() return false end,
+            },
             ["ui/uimanager"] = {
+                nextTick = function(_, action)
+                    pending[#pending + 1] = action
+                end,
                 show = function(_, widget)
                     table.insert(shown, widget)
                 end,
@@ -97,6 +104,55 @@ describe("main settings dialog", function()
         assert.are.equal(0, #closed)
         return dialog
     end
+
+    describe("comparison messages", function()
+        local request = { owner = "example", repo = "plugin", base_ref = "v1", head_ref = "v2" }
+
+        local function runComparison(expected)
+            plugin:loadComparison(request)
+            assert.are.equal(translated("Downloading comparison…"), shown[1].text)
+            assert.are.equal(1, #pending)
+            pending[1]()
+            assert.are.equal(shown[1], closed[1])
+            assert.are.equal(2, #shown)
+            assert.are.equal(translated(expected), shown[2].text)
+        end
+
+        for _, exists in ipairs({ false, true }) do
+            it("shows a returned API error when key existence is " .. tostring(exists), function()
+                read_result = { exists = exists, token = exists and "secret" or nil }
+                package.loaded.github_client.compare = function(_, actual_request, token)
+                    assert.are.equal(request, actual_request)
+                    assert.are.equal(read_result.token, token)
+                    return nil, nil, "GitHub returned HTTP 404."
+                end
+                runComparison("The comparison failed: GitHub returned HTTP 404.")
+            end)
+        end
+
+        it("shows key read errors without calling GitHub", function()
+            read_result = { exists = false, error = "permission denied" }
+            package.loaded.github_client.compare = function() error("must not call GitHub") end
+            runComparison("The GitHub API key could not be read: permission denied")
+        end)
+
+        it("shows unexpected client errors", function()
+            package.loaded.github_client.compare = function() error("network failure", 0) end
+            runComparison("The comparison failed: network failure")
+        end)
+
+        it("shows parser errors", function()
+            package.loaded.github_client.compare = function() return "diff text", {} end
+            package.loaded.diff_parser.parse = function() error("invalid patch", 0) end
+            runComparison("The diff could not be parsed: invalid patch")
+        end)
+
+        it("shows a message for comparisons without file changes", function()
+            package.loaded.github_client.compare = function() return "", {} end
+            package.loaded.diff_parser.parse = function() return { files = {} } end
+            runComparison("These revisions do not contain any file changes.")
+        end)
+    end)
 
     it("prefills a ZenPM comparison without reusing unrelated saved revisions", function()
         plugin:openCompareDialog {
