@@ -77,6 +77,9 @@ function Diffs:init()
     self:migrateLegacySettings()
     self.preferences = DiffPreferences.load(self.settings)
     self.ui.menu:registerToMainMenu(self)
+    UIManager:nextTick(function()
+        require("zenpm_integration").install(self)
+    end)
 end
 
 --- Store a viewer preference immediately so it survives a KOReader restart.
@@ -160,29 +163,35 @@ function Diffs:loadComparison(request)
 end
 
 --- Open the form used to define a GitHub comparison.
-function Diffs:openCompareDialog()
+function Diffs:openCompareDialog(defaults)
+    defaults = defaults or {
+        owner = self.settings:readSetting("last_owner"),
+        repo = self.settings:readSetting("last_repo"),
+        base_ref = self.settings:readSetting("last_base_ref"),
+        head_ref = self.settings:readSetting("last_head_ref"),
+    }
     local dialog
     dialog = MultiInputDialog:new {
         title = _("Compare GitHub revisions"),
         fields = {
             {
                 description = _("Repository owner"),
-                text = self.settings:readSetting("last_owner") or "",
+                text = defaults.owner or "",
                 hint = _("Account or organization"),
             },
             {
                 description = _("Repository name"),
-                text = self.settings:readSetting("last_repo") or "",
+                text = defaults.repo or "",
                 hint = _("Name only"),
             },
             {
                 description = _("Base revision"),
-                text = self.settings:readSetting("last_base_ref") or "",
+                text = defaults.base_ref or "",
                 hint = _("Commit, branch, or tag"),
             },
             {
                 description = _("Head revision"),
-                text = self.settings:readSetting("last_head_ref") or "",
+                text = defaults.head_ref or "",
                 hint = _("Commit, branch, or tag"),
             },
         },

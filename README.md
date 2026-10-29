@@ -33,6 +33,14 @@ To configure authentication, open **Tools → Diffs → Settings → GitHub API 
 
 Without a token, the plugin uses GitHub's unauthenticated API and supports public repositories only. GitHub may temporarily reject requests after its anonymous rate limit is reached.
 
+### Comparing plugins from ZenPM
+
+With both Diffs and ZenPM enabled, restart KOReader and open an installed plugin's action menu in ZenPM. For packages whose `source` points to a GitHub repository, **View changes** opens the Diffs comparison form with that repository and the installed/latest versions prefilled. When ZenPM would normally update directly, Diffs first offers **Update** and **View changes**, so Advanced mode is not required. Change either revision to compare any two versions, then tap **Compare**. Viewing changes does not install, update, or queue the plugin.
+
+Missing or unknown revisions are left blank. ZenPM version labels are not always Git tags: if needed, enter the exact tag (including a `v` prefix), branch, or commit used by the repository. The comparison shows repository changes, not differences between downloaded release archives.
+
+The integration is optional and requires ZenPM's `zenpm_app` lazy loader and `ui/modals.package_modify` menu API. No ZenPM files are modified; packages without a supported GitHub source keep their existing menus. GitHub authentication and rate limits are the same as for comparisons opened from Tools.
+
 ## Releases
 
 Releases are created automatically by GitHub Actions when a version tag is pushed. Tags use the form `vMAJOR.MINOR.PATCH`, optionally followed by a prerelease suffix such as `-beta.1` or `-rc.1`.

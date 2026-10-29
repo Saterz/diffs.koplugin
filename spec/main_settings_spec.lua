@@ -98,6 +98,44 @@ describe("main settings dialog", function()
         return dialog
     end
 
+    it("prefills a ZenPM comparison without reusing unrelated saved revisions", function()
+        plugin:openCompareDialog {
+            owner = "example",
+            repo = "plugin",
+            base_ref = "v1",
+            head_ref = "v2",
+        }
+
+        assert.are.equal(1, #shown)
+        local fields = shown[1].fields
+        assert.are.equal("example", fields[1].text)
+        assert.are.equal("plugin", fields[2].text)
+        assert.are.equal("v1", fields[3].text)
+        assert.are.equal("v2", fields[4].text)
+        assert.is_true(shown[1].keyboard_shown)
+    end)
+
+    it("keeps unknown ZenPM revisions empty", function()
+        plugin:openCompareDialog { owner = "example", repo = "plugin" }
+
+        assert.are.equal("", shown[1].fields[3].text)
+        assert.are.equal("", shown[1].fields[4].text)
+    end)
+
+    it("still uses saved fields when opened from the Tools menu", function()
+        local previous = plugin.settings
+        plugin.settings = {
+            readSetting = function(_, key) return "saved_" .. key end,
+        }
+        plugin:openCompareDialog()
+        plugin.settings = previous
+
+        assert.are.equal("saved_last_owner", shown[1].fields[1].text)
+        assert.are.equal("saved_last_repo", shown[1].fields[2].text)
+        assert.are.equal("saved_last_base_ref", shown[1].fields[3].text)
+        assert.are.equal("saved_last_head_ref", shown[1].fields[4].text)
+    end)
+
     it("translates the dialog when no API key exists", function()
         plugin:openSettingsDialog()
 
